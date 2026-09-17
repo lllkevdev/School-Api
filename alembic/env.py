@@ -8,7 +8,8 @@ from alembic import context
 from database.connection import Base, DATABASE_URL
 from models.calificacion import Calificacion
 from models.alumno import Alumno   
-from models.materia import Materia  
+from models.materia import Materia
+from models.usuario import Usuario  
 
 
 # this is the Alembic Config object, which provides
