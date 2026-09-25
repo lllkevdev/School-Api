@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from sqlalchemy import String
+from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database.connection import Base
@@ -8,6 +8,7 @@ from database.connection import Base
 
 if TYPE_CHECKING:
     from models.calificacion import Calificacion
+    from models.usuario import Usuario
 
 
 class Materia(Base):
@@ -25,4 +26,14 @@ class Materia(Base):
 
     calificaciones: Mapped[list["Calificacion"]] = relationship(
         back_populates="materia"
+    )
+
+
+    maestro_id: Mapped[int] = mapped_column(
+        ForeignKey("usuarios.id"),
+        nullable=True
+    )
+
+    maestro: Mapped["Usuario"] = relationship(
+        back_populates="materias"
     )

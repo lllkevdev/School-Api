@@ -26,27 +26,17 @@ from services.calificacion_service import (
     obtener_estadisticas_alumno
 ) 
 
+from core.permisos import Permiso, requiere_permiso
+from core.dependencies import get_usuario_actual
+
+
 
 router = APIRouter(
     prefix="/calificaciones",
     tags=["Calificaciones"]
 )
 
-ERRORES_HTTP = {
-    "alumno": (404, "El alumno no existe"),
-    "materia": (404, "La materia no existe"),
-    "calificacion": (404, "Calificación no encontrada"),
-    "calificaciones": (404, "No se encontraron calificaciones para el alumno"),
-    "conflicto": (409, "Ya existe una calificación para ese alumno, materia y periodo"),
-}
-
-
-def error_to_http(error: str | None) -> None:
-    """Convierte un código de error del service en una HTTPException."""
-    if error is None:
-        return
-    status_code, detail = ERRORES_HTTP.get(error, (400, error))
-    raise HTTPException(status_code=status_code, detail=detail)
+from core.errores import error_to_http
 
 @router.post(
     "/",
@@ -55,11 +45,14 @@ def error_to_http(error: str | None) -> None:
 )
 def crear(
     calificacion: Calificacion,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _ = Depends(requiere_permiso(Permiso.CREAR_CALIFICACION)),
+    usuario: dict = Depends(get_usuario_actual)
 ):
     resultado, error = crear_calificacion(
         db,
-        calificacion
+        calificacion,
+        usuario
     )
 
     error_to_http(error)
@@ -69,11 +62,15 @@ def crear(
 
 
 
+
 @router.get(
     "/",
     response_model=list[CalificacionRespuesta]
 )
-def obtener(db: Session = Depends(get_db)):
+def obtener(
+    db: Session = Depends(get_db),
+    _ = Depends(requiere_permiso(Permiso.VER_TODAS_CALIFICACIONES))
+):
     return obtener_calificaciones(db)
 
 
@@ -83,7 +80,10 @@ def obtener(db: Session = Depends(get_db)):
     "/detalle",
     response_model=list[CalificacionDetalle]
 )
-def obtener_detalle(db: Session = Depends(get_db)):
+def obtener_detalle(
+    db: Session = Depends(get_db),
+    _ = Depends(requiere_permiso(Permiso.VER_TODAS_CALIFICACIONES))
+):
     return obtener_calificaciones_detalle(db)
 
 
@@ -96,11 +96,14 @@ def obtener_detalle(db: Session = Depends(get_db)):
 def obtener_por_alumno(
     alumno_id: int = Path(gt=0),
     periodo: int | None = Query(default=None, ge=1, le=3),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _ = Depends(requiere_permiso(Permiso.VER_CALIFICACION)),
+    usuario: dict = Depends(get_usuario_actual)
 ):
     calificaciones, error = obtener_calificaciones_alumno(
         db,
         alumno_id,
+        usuario,
         periodo,
     )
 
@@ -115,7 +118,8 @@ def obtener_por_alumno(
 )
 def obtener_por_alumno_join(
     alumno_id: int = Path(gt=0),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _ = Depends(requiere_permiso(Permiso.VER_CALIFICACION))
 ):
     calificaciones, error = obtener_calificaciones_alumno_join(
         db,
@@ -136,7 +140,8 @@ def obtener_por_alumno_join(
 def obtener_promedio(
     alumno_id: int = Path(gt=0),
     periodo: int | None = Query(default=None, ge=1, le=3),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _ = Depends(requiere_permiso(Permiso.VER_CALIFICACION))
 ):
     resultado, error = obtener_promedio_alumno(
         db,
@@ -156,7 +161,8 @@ def obtener_promedio(
 def obtener_estadisticas(
     alumno_id: int = Path(gt=0),
     periodo: int | None = Query(default=None, ge=1, le=3),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _ = Depends(requiere_permiso(Permiso.VER_CALIFICACION))
 ):
     resultado, error = obtener_estadisticas_alumno(
         db,
@@ -177,18 +183,17 @@ def obtener_estadisticas(
 )
 def obtener_por_id(
     calificacion_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _ = Depends(requiere_permiso(Permiso.VER_CALIFICACION)),
+    usuario = Depends(get_usuario_actual)
 ):
-    calificacion = buscar_calificaciones(
+    calificacion, error = buscar_calificaciones(
         db,
-        calificacion_id
+        calificacion_id,
+        usuario
     )
 
-    if calificacion is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Calificación no encontrada"
-        )
+    error_to_http(error)
 
     return calificacion
 
@@ -201,12 +206,15 @@ def obtener_por_id(
 def actualizar(
     calificacion_id: int,
     datos: CalificacionActualizar,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _ = Depends(requiere_permiso(Permiso.MODIFICAR_CALIFICACION)),
+    usuario = Depends(get_usuario_actual)
 ):
     calificacion, error = actualizar_calificacion(
         db,
         calificacion_id,
-        datos
+        datos,
+        usuario
     )
 
     error_to_http(error)
@@ -222,19 +230,18 @@ def actualizar(
 )
 def eliminar(
     calificacion_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _ = Depends(requiere_permiso(Permiso.ELIMINAR_CALIFICACION)),
+    usuario = Depends(get_usuario_actual)
 ):
-    calificacion = eliminar_calificacion(
+    calificacion, error = eliminar_calificacion(
         db,
-        calificacion_id
+        calificacion_id,
+        usuario
     )
 
-    if calificacion is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Calificación no encontrada"
-        )
+    error_to_http(error)
 
-    return
+    return 
 
 

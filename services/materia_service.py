@@ -38,10 +38,18 @@ def obtener_materias(
 
 
 def buscar_materia(
-    db: Session, 
+    db: Session,
     materia_id: int
-) -> Materia | None:
-    return db.query(Materia).filter(Materia.id == materia_id).first()
+) -> tuple[Materia | None, str | None]:
+
+    materia = db.query(Materia).filter(
+        Materia.id == materia_id
+    ).first()
+
+    if materia is None:
+        return None, "materia"
+
+    return materia, None
 
 
 
@@ -51,7 +59,11 @@ def actualizar_materia(
     materia: MateriaSchema
 ) -> Materia | None:
     
-    materia_existente = buscar_materia(db, materia_id)
+    materia_existente, error = buscar_materia(db, materia_id)
+
+    if error:
+        return None
+
     if not materia_existente:
         return None
 
@@ -73,7 +85,10 @@ def actualizar_materia_parcialmente(
     materia: MateriaActualizarSchema
 ) -> tuple[Materia | None, str | None]:
     
-    materia_existente = buscar_materia(db, materia_id)
+    materia_existente, error = buscar_materia(db, materia_id)
+
+    if error:
+        return None, error
 
     if not materia_existente:
         return None,"materia"
@@ -101,7 +116,10 @@ def eliminar_materia(
     materia_id: int
 )-> tuple[Materia | None, str | None]:
     
-    materia= buscar_materia(db, materia_id)
+    materia, error= buscar_materia(db, materia_id)
+
+    if error:
+        return None, error
 
     if materia is None:
         return None, "materia"

@@ -11,6 +11,7 @@ from schemas.calificacion import (
     CalificacionAlumno
 )
 
+from core.permisos import Rol
 
 def crear_alumno(
     db: Session,
@@ -39,14 +40,31 @@ def obtener_alumnos(db: Session) -> list[Alumno]:
     return db.query(Alumno).all()
 
 
+
+
+
 def buscar_alumno(
     db: Session,
-    alumno_id: int
-) -> Alumno | None:
+    alumno_id: int,
+    usuario: dict
+) -> tuple[Alumno | None, str | None]:
 
-    return db.query(Alumno).filter(
+    alumno = db.query(Alumno).filter(
         Alumno.id == alumno_id
     ).first()
+
+    if alumno is None:
+        return None, "alumno"
+
+    if usuario["rol"] == Rol.ALUMNO:
+        if usuario["alumno_id"] != alumno_id:
+            return None, "permiso"
+
+    return alumno, None
+
+
+
+
 
 
 def actualizar_alumno(
@@ -116,7 +134,9 @@ def eliminar_alumno(
     forzar: bool = False
 ) -> tuple[Alumno | None, str | None]:
 
-    alumno = buscar_alumno(db, alumno_id)
+    alumno = db.query(Alumno).filter(
+        Alumno.id == alumno_id
+    ).first()
 
     if alumno is None:
         return None, "alumno"
@@ -142,17 +162,31 @@ def eliminar_alumno(
 
 def obtener_alumno_con_calificaciones(
     db: Session,
-    alumno_id: int
-) -> AlumnoConCalificaciones | None:
+    alumno_id: int,
+    usuario: dict
+) -> tuple[AlumnoConCalificaciones | None, str | None]:
 
-    alumno = buscar_alumno(db, alumno_id)
+    alumno, error = buscar_alumno(
+        db,
+        alumno_id,
+        usuario
+    )
 
-    if alumno is None:
-        return None
+    if error:
+        return None, error
+
+    calificaciones_permitidas = alumno.calificaciones
+
+    if usuario["rol"] == Rol.MAESTRO:
+        calificaciones_permitidas = [
+            calificacion
+            for calificacion in calificaciones_permitidas
+            if calificacion.materia.maestro_id == usuario["id"]
+        ]
 
     calificaciones: list[CalificacionAlumno] = []
 
-    for calificacion in alumno.calificaciones:
+    for calificacion in calificaciones_permitidas:
         calificaciones.append(
             CalificacionAlumno(
                 materia=calificacion.materia.nombre,
@@ -175,4 +209,4 @@ def obtener_alumno_con_calificaciones(
         apellido=alumno.apellido,
         calificaciones=calificaciones,
         promedio=round(promedio, 2)
-    )
+    ), None

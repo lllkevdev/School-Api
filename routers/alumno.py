@@ -32,6 +32,14 @@ from services.calificacion_service import (
     obtener_estadisticas_alumno,
 )
 
+from core.permisos import requiere_permiso
+from core.permisos import get_usuario_actual
+
+from schemas.permisos import Permiso
+
+from core.errores import error_to_http
+
+
 router = APIRouter(
     prefix="/alumnos",
     tags=["Alumnos"]
@@ -44,14 +52,24 @@ router = APIRouter(
     response_model=AlumnoRespuesta,
     status_code=status.HTTP_201_CREATED
 )
-def crear(alumno: Alumno, db: Session = Depends(get_db)):
+def crear(alumno: Alumno,
+    db: Session = Depends(get_db),
+    _ = Depends(requiere_permiso(Permiso.CREAR_ALUMNO))
+):
     return crear_alumno(db, alumno)
 
 
 
+
+
 @router.get("/", response_model=list[AlumnoRespuesta])
-def obtener(db: Session = Depends(get_db)):
+def obtener(
+    db: Session = Depends(get_db),
+    _ = Depends(requiere_permiso(Permiso.VER_ALUMNOS))
+):
     return obtener_alumnos(db)
+
+
 
 
 
@@ -61,18 +79,16 @@ def obtener(db: Session = Depends(get_db)):
 )
 def obtener_con_calificaciones(
     alumno_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    usuario = Depends(get_usuario_actual)
 ):
-    alumno = obtener_alumno_con_calificaciones(
+    alumno, error = obtener_alumno_con_calificaciones(
         db,
-        alumno_id
+        alumno_id,
+        usuario
     )
 
-    if alumno is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Alumno no encontrado"
-        )
+    error_to_http(error)
 
     return alumno
 
@@ -157,14 +173,16 @@ def obtener_estadisticas(
 )
 def obtener_por_id(
     alumno_id: int, 
-    db: Session = Depends(get_db)):
-    alumno = buscar_alumno(db, alumno_id)
+    db: Session = Depends(get_db),
+    usuario = Depends(get_usuario_actual)
+):
+    alumno, error = buscar_alumno(
+        db, 
+        alumno_id,
+        usuario
+    )
 
-    if alumno is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Alumno no encontrado"
-        )
+    error_to_http(error)
 
     return alumno
 
@@ -177,7 +195,8 @@ def obtener_por_id(
 def actualizar(
     alumno_id: int,
     datos: AlumnoActualizar,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _ = Depends(requiere_permiso(Permiso.MODIFICAR_ALUMNO))
 ):
     alumno = actualizar_alumno(
         db, 
@@ -203,7 +222,8 @@ def actualizar(
 def actualizar_alumno_put(
     alumno_id: int,
     datos: Alumno,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _ = Depends(requiere_permiso(Permiso.MODIFICAR_ALUMNO))
 ):
     alumno = reemplazar_alumno(db, alumno_id, datos)
 
@@ -225,7 +245,8 @@ def actualizar_alumno_put(
 def eliminar(
     alumno_id: int, 
     forzar: bool = False,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _ = Depends(requiere_permiso(Permiso.ELIMINAR_ALUMNO))
 ):
     alumno, error = eliminar_alumno(
         db,

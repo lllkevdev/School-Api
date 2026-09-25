@@ -15,10 +15,16 @@ from schemas.calificacion import (
 )
 
 
+from core.permisos import Rol
+
+
+
+
 
 def crear_calificacion(
     db: Session,
-    calificacion: CalificacionSchema
+    calificacion: CalificacionSchema,
+    usuario:dict,
 ) -> tuple[CalificacionModel | None, str | None]:
 
     alumno = db.query(AlumnoModel).filter(
@@ -26,14 +32,18 @@ def crear_calificacion(
     ).first()
 
     if alumno is None:
-        return None, "alumno"
+        return None, "alumno_calificacion"
 
     materia = db.query(MateriaModel).filter(
         MateriaModel.id == calificacion.materia_id
     ).first()
 
     if materia is None:
-        return None, "materia"
+        return None, "materia_calificacion"
+
+    if usuario["rol"] == Rol.MAESTRO:
+        if usuario["id"] != materia.maestro_id:
+            return None, "maestro"
 
     nueva_calificacion = CalificacionModel(
         alumno_id=calificacion.alumno_id,
@@ -55,6 +65,8 @@ def crear_calificacion(
 
 
 
+
+
 def obtener_calificaciones(
     db: Session
 ) -> list[CalificacionModel]:
@@ -63,12 +75,28 @@ def obtener_calificaciones(
 
 def buscar_calificaciones(
         db: Session,
-        calificacion_id: int
-) -> CalificacionModel | None:
+        calificacion_id: int,
+        usuario
+) -> tuple[CalificacionModel | None, str | None]:
 
-    return db.query(CalificacionModel).filter(
+    calificacion = db.query(CalificacionModel).filter(
         CalificacionModel.id == calificacion_id
     ).first()
+
+    if calificacion is None:
+        return None, "calificacion"
+
+    if usuario["rol"] == Rol.MAESTRO:
+        if usuario["id"] != calificacion.materia.maestro_id:
+            return None, "permiso"
+
+    if usuario["rol"] == Rol.ALUMNO:
+        if usuario["alumno_id"] != calificacion.alumno_id:
+            return None, "permiso"
+
+    return calificacion, None
+
+
 
 
 
@@ -101,6 +129,8 @@ def obtener_calificaciones_detalle(
     return resultado
 
 
+
+
 def _buscar_alumno_o_error(
     db: Session,
     alumno_id: int
@@ -111,9 +141,12 @@ def _buscar_alumno_o_error(
     ).first()
 
     if alumno is None:
-        return None, "alumno"
+        return None, "alumno_calificacion"
 
     return alumno, None
+
+
+
 
 def _consulta_calificaciones_alumno(
     db: Session,
@@ -133,6 +166,9 @@ def _consulta_calificaciones_alumno(
 
     return consulta
 
+
+
+
 def obtener_promedio_alumno(
         db: Session,
         alumno_id: int,
@@ -141,8 +177,12 @@ def obtener_promedio_alumno(
 
     alumno, error = _buscar_alumno_o_error(db, alumno_id)
 
-    if error is not None:
+    if error is not None or alumno is None:
         return None, error
+    
+    if alumno is None:
+        return None, "alumno"
+    
     consulta = _consulta_calificaciones_alumno(
         db,
         [func.avg(CalificacionModel.nota)],
@@ -169,7 +209,8 @@ def obtener_promedio_alumno(
 def actualizar_calificacion(
     db: Session,
     calificacion_id: int,
-    datos: CalificacionActualizar
+    datos: CalificacionActualizar,
+    usuario
 )-> tuple[CalificacionModel | None, str | None]:
 
     cambios = datos.model_dump(exclude_unset=True)
@@ -187,7 +228,7 @@ def actualizar_calificacion(
         ).first()
 
         if alumno is None:
-            return None, "alumno"
+            return None, "alumno_calificacion"
 
     if "materia_id" in cambios:
         materia = db.query(MateriaModel).filter(
@@ -195,7 +236,16 @@ def actualizar_calificacion(
         ).first()
 
         if materia is None:
-            return None, "materia"
+            return None, "materia_calificacion"
+
+        materia_autorizacion = materia
+    else: 
+        materia_autorizacion =  calificacion.materia
+
+
+    if usuario["rol"] == Rol.MAESTRO:
+        if usuario["id"] != materia_autorizacion.maestro_id:
+            return None, "maestro"
 
     for campo, valor in cambios.items():
         setattr(calificacion, campo, valor)
@@ -214,24 +264,29 @@ def actualizar_calificacion(
 
 def eliminar_calificacion(
     db: Session,
-    calificacion_id: int
-) -> CalificacionModel | None:
+    calificacion_id: int,
+    usuario
+) -> tuple[CalificacionModel | None, str | None]:
 
     calificacion = db.query(CalificacionModel).filter(
         CalificacionModel.id == calificacion_id
     ).first()
 
     if calificacion is None:
-        return None
+        return None, "calificacion"
+
+    if usuario["rol"] == Rol.MAESTRO:
+        if usuario["id"] != calificacion.materia.maestro_id:
+            return None, "maestro"
 
     try:
         db.delete(calificacion)
         db.commit()
     except IntegrityError:
         db.rollback()
-        return None
+        return None, "conflicto"
 
-    return calificacion
+    return calificacion, None
 
 
 
@@ -246,10 +301,13 @@ def _to_calificacion_alumno(
     )
 
 
+
+
 def obtener_calificaciones_alumno(
     db: Session,
     alumno_id: int,
-    periodo: int | None = None
+    usuario: dict,
+    periodo: int | None = None,
 ) -> tuple[list[CalificacionAlumno] | None, str | None]:
 
     alumno = db.query(AlumnoModel).filter(
@@ -257,8 +315,12 @@ def obtener_calificaciones_alumno(
     ).first()
 
     if alumno is None:
-        return None, "alumno"
+        return None, "alumno_calificacion"
 
+    if usuario["rol"] == Rol.ALUMNO:
+        if usuario["alumno_id"] != alumno_id:
+            return None, "permiso"
+        
     calificaciones = (
         db.query(CalificacionModel)
         .options(
@@ -279,6 +341,11 @@ def obtener_calificaciones_alumno(
     resultado = []
 
     for calificacion in calificaciones:
+
+        if usuario["rol"] == Rol.MAESTRO:
+            if calificacion.materia.maestro_id != usuario["id"]:
+                continue
+
         resultado.append(
             _to_calificacion_alumno(
                 calificacion,
@@ -287,6 +354,9 @@ def obtener_calificaciones_alumno(
         )
 
     return resultado, None
+
+
+
 
 
 
@@ -300,7 +370,7 @@ def obtener_calificaciones_alumno_join(
     ).first()
 
     if alumno is None:
-        return None, "alumno"
+        return None, "alumno_calificacion"
 
     resultados = (
         db.query(CalificacionModel, MateriaModel)

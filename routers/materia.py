@@ -10,6 +10,11 @@ from schemas.materia import (
     MateriaActualizar as MateriaActualizarSchema
 )
 
+from core.permisos import requiere_permiso
+from core.errores import error_to_http
+
+from schemas.permisos import Permiso
+
 from services.materia_service import (
     crear_materia,
     obtener_materias,
@@ -31,8 +36,11 @@ router = APIRouter(
     response_model=MateriaRespuesta,
     status_code=status.HTTP_201_CREATED
 )
-def crear(materia: Materia, db: Session = Depends(get_db)):
-
+def crear(
+    materia: Materia, 
+    db: Session = Depends(get_db),
+    _ = Depends(requiere_permiso(Permiso.CREAR_MATERIA))
+):
     try:
         return crear_materia(db, materia)
 
@@ -47,7 +55,10 @@ def crear(materia: Materia, db: Session = Depends(get_db)):
     "/",
     response_model=list[MateriaRespuesta]
 )
-def obtener(db: Session = Depends(get_db)):
+def obtener(
+    db: Session = Depends(get_db),
+    _ = Depends(requiere_permiso(Permiso.VER_MATERIAS))
+):
     return obtener_materias(db)
 
 
@@ -56,10 +67,15 @@ def obtener(db: Session = Depends(get_db)):
     "/{materia_id}",
     response_model=MateriaRespuesta
 )
-def obtener_por_id(materia_id: int, db: Session = Depends(get_db)):
-    materia = buscar_materia(db, materia_id)
-    if not materia:
-        raise HTTPException(status_code=404, detail="Materia no encontrada")
+def obtener_por_id(
+    materia_id: int, 
+    db: Session = Depends(get_db),
+    _ = Depends(requiere_permiso(Permiso.VER_MATERIAS))
+):
+    materia, error = buscar_materia(db, materia_id) 
+
+    error_to_http(error)
+    
     return materia
 
 
@@ -71,7 +87,8 @@ def obtener_por_id(materia_id: int, db: Session = Depends(get_db)):
 )
 def actualizar_materia_put(
     materia_id: int, 
-    materia: Materia, db: Session = Depends(get_db)
+    materia: Materia, db: Session = Depends(get_db),
+    _ = Depends(requiere_permiso(Permiso.MODIFICAR_MATERIA))
 ):
     try:
         materia_actualizada = actualizar_materia(db, materia_id, materia)
@@ -94,7 +111,8 @@ def actualizar_materia_put(
 def actualizar_materia_patch(
     materia_id: int, 
     materia: MateriaActualizarSchema, 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _ = Depends(requiere_permiso(Permiso.MODIFICAR_MATERIA))
 ):
     try:
         materia_actualizada, error = actualizar_materia_parcialmente(
@@ -102,18 +120,8 @@ def actualizar_materia_patch(
             materia_id, 
             materia
         )
-        
-        if error == "materia":
-            raise HTTPException(
-                status_code=404, 
-                detail="Materia no encontrada"
-            )
 
-        if error == "sin_cambios":
-            raise HTTPException(
-                status_code=400,
-                detail="Debe proporcionar al menos un campo para actualizar"
-            )
+        error_to_http(error)
         
         return materia_actualizada
     
@@ -132,20 +140,11 @@ def actualizar_materia_patch(
 )
 def eliminar(
     materia_id: int, 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _ = Depends(requiere_permiso(Permiso.ELIMINAR_MATERIA))
 ):
     materia_eliminada, error = eliminar_materia(db, materia_id)
 
-    if error == "materia":
-        raise HTTPException(
-            status_code=404,
-            detail="Materia no encontrada"
-        )
-
-    if error == "tiene_calificaciones":
-        raise HTTPException(
-            status_code=409,
-            detail="No se puede eliminar la materia porque tiene calificaciones asociadas"
-        )
+    error_to_http(error)
 
     return 
