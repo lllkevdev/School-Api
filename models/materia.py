@@ -4,7 +4,7 @@ from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database.connection import Base
-
+from models.inscripcion import Inscripcion
 
 if TYPE_CHECKING:
     from models.calificacion import Calificacion
@@ -36,4 +36,8 @@ class Materia(Base):
 
     maestro: Mapped["Usuario"] = relationship(
         back_populates="materias"
+    )
+
+    inscripciones: Mapped[list["Inscripcion"]] = relationship(
+        back_populates="materia"
     )

@@ -5,10 +5,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database.connection import Base
 
+from models.inscripcion import Inscripcion
 
 if TYPE_CHECKING:
     from models.calificacion import Calificacion
-
 
 class Alumno(Base):
     __tablename__ = "alumnos"
@@ -39,5 +39,9 @@ class Alumno(Base):
     edad: Mapped[int] = mapped_column(nullable=False)
 
     calificaciones: Mapped[list["Calificacion"]] = relationship(
+        back_populates="alumno"
+    )
+
+    inscripciones: Mapped[list["Inscripcion"]] = relationship(
         back_populates="alumno"
     )

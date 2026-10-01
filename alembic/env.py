@@ -10,7 +10,7 @@ from models.calificacion import Calificacion
 from models.alumno import Alumno   
 from models.materia import Materia
 from models.usuario import Usuario  
-
+from models.inscripcion import Inscripcion
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

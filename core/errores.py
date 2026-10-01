@@ -14,6 +14,21 @@ ERRORES_HTTP = {
         "No se encontraron calificaciones para el alumno"
     ),
 
+    "alumno_inscripcion": (
+        404,
+        "El alumno no existe"
+    ),
+
+    "materia_inscripcion": (
+        404,
+        "La materia no existe"
+    ),
+
+    "inscripcion_calificacion": (
+        409,
+        "El alumno no esta inscripto en la materia"
+    ),
+
     "conflicto": (
         409,
         "Ya existe una calificación para ese alumno, materia y periodo"

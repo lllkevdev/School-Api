@@ -1,6 +1,5 @@
 from pydantic import BaseModel, Field, ConfigDict
 
-
 class Calificacion(BaseModel):
     alumno_id: int = Field(gt=0)
     materia_id: int = Field(gt=0)
@@ -55,7 +54,8 @@ class PromedioAlumno(BaseModel):
 
 class EstadisticasAlumno(BaseModel):
     alumno: str
-    cantidad_calificaciones: int
-    promedio: float
-    nota_maxima: float
-    nota_minima: float
+    materia: str
+    periodo_1: float | None
+    periodo_2: float | None
+    periodo_3: float | None
+    promedio: float | None

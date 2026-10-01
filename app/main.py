@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from routers.alumno import router as alumno_router
 from routers.materia import router as materia_router
 from routers.calificacion import router as calificacion_router
+from routers.inscripciones import router as inscripcion_router
 
 
 app = FastAPI(
@@ -24,6 +25,7 @@ async def manejar_error_general(request: Request, exc: Exception):
 app.include_router(alumno_router)
 app.include_router(materia_router)
 app.include_router(calificacion_router)
+app.include_router(inscripcion_router)
 
 
 @app.get("/")

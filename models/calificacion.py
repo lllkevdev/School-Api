@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, CheckConstraint
+from sqlalchemy import ForeignKey, CheckConstraint, UniqueConstraint, ForeignKeyConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database.connection import Base
@@ -22,7 +22,18 @@ class Calificacion(Base):
         CheckConstraint(
             "periodo >= 1 AND periodo <= 3",
             name="ck_calificaciones_periodo"
-        )
+        ),
+        UniqueConstraint(
+            "alumno_id",
+            "materia_id",
+            "periodo",
+            name="uq_calificacion_alumno_materia_periodo"
+        ),
+        ForeignKeyConstraint(
+            ["alumno_id", "materia_id"],
+            ["inscripciones.alumno_id", "inscripciones.materia_id"],
+            ondelete="CASCADE",
+        ),
     )
 
 

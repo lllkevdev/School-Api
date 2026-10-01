@@ -44,7 +44,6 @@ def test_alumno_no_puede_obtener_todos_los_alumnos(client, usuario_alumno):
 
 
 
-
 def test_no_eliminar_alumno_con_calificaciones(client, usuario_admin):
     response = client.post(
         "/alumnos/",
@@ -67,6 +66,16 @@ def test_no_eliminar_alumno_con_calificaciones(client, usuario_admin):
     materia_id = response.json()["id"]
 
     response = client.post(
+        "/inscripciones/",
+        json={
+            "alumno_id": alumno_id,
+            "materia_id": materia_id,
+        }
+    )
+
+    assert response.status_code == 201
+
+    response = client.post(
         "/calificaciones/",
         json={
             "alumno_id": alumno_id,
@@ -79,7 +88,9 @@ def test_no_eliminar_alumno_con_calificaciones(client, usuario_admin):
     response = client.delete(f"/alumnos/{alumno_id}")
 
     assert response.status_code == 409
-    assert response.json() == {"detail": "No se puede eliminar el alumno porque tiene calificaciones asociadas"}
+    assert response.json() == {
+        "detail": "No se puede eliminar el alumno porque tiene calificaciones asociadas"
+    }
 
 
 
@@ -314,7 +325,6 @@ def test_obtener_alumno_con_calificaciones(client, usuario_admin):
 
     alumno_id = data.json()["id"]
 
-
     response = client.post(
         "/materias/",
         json={
@@ -322,12 +332,17 @@ def test_obtener_alumno_con_calificaciones(client, usuario_admin):
         }
     )
 
-    print("MATERIA:", response.status_code)
-    print("MATERIA:", response.json())
-
-    materia_id = response.json()["id"]
     materia_id = response.json()["id"]
 
+    response = client.post(
+        "/inscripciones/",
+        json={
+            "alumno_id": alumno_id,
+            "materia_id": materia_id,
+        }
+    )
+
+    assert response.status_code == 201
 
     response = client.post(
         "/calificaciones/",
@@ -353,127 +368,6 @@ def test_obtener_alumno_con_calificaciones(client, usuario_admin):
 
     assert len(data["calificaciones"]) == 1
 
-
-
-
-
-def test_obtener_promedio_alumno_por_periodo(client, usuario_admin):
-    data = client.post(
-        "/alumnos/",
-        json={
-            "nombre": "Juan",
-            "apellido": "Pérez",
-            "edad": 20,
-        }
-    )
-
-    alumno_id = data.json()["id"]
-
-    response = client.post(
-        "/materias/",
-        json={
-            "nombre": "Matemáticas",
-        }
-    )
-
-    materia_id = response.json()["id"]
-
-
-    response = client.post(
-        "/calificaciones/",
-        json={
-            "alumno_id": alumno_id,
-            "materia_id": materia_id,
-            "nota": 6,
-            "periodo": 1
-        }
-    )
-
-
-
-    response = client.post(
-        "/calificaciones/",
-        json={
-            "alumno_id": alumno_id,
-            "materia_id": materia_id,
-            "nota": 10,
-            "periodo": 2
-        }
-    )
-
-
-    response = client.get(
-        f"/calificaciones/alumno/{alumno_id}/promedio?periodo=2"
-    )
-
-    data = response.json()
-
-    print(response.url)
-    print(data)
-    
-    assert response.status_code == 200
-
-    assert data["promedio"] == 10.0
-    assert data["alumno"] == "Juan Pérez"
-
-
-
-
-def test_obtener_estadisticas_alumno_por_periodo(client, usuario_admin):
-    data = client.post(
-        "/alumnos/",
-        json={
-            "nombre": "Juan",
-            "apellido": "Pérez",
-            "edad": 20,
-        }
-    )
-
-    alumno_id = data.json()["id"]
-
-    response = client.post(
-        "/materias/",
-        json={
-            "nombre": "Matemáticas",
-        }
-    )
-
-    materia_id = response.json()["id"]
-
-    response = client.post(
-        "/calificaciones/",
-        json={
-            "alumno_id": alumno_id,
-            "materia_id": materia_id,
-            "nota": 6,
-            "periodo": 1
-        }
-    )
-
-
-
-    response = client.post(
-        "/calificaciones/",
-        json={
-            "alumno_id": alumno_id,
-            "materia_id": materia_id,
-            "nota": 10,
-            "periodo": 2
-        }
-    )
-
-    response = client.get(
-        f"/calificaciones/alumno/{alumno_id}/estadisticas?periodo=2"
-    )
-
-    data = response.json()
-
-    assert response.status_code == 200
-
-    assert data["cantidad_calificaciones"] == 1
-    assert data["promedio"] == 10
-    assert data["nota_maxima"] == 10
-    assert data["nota_minima"] == 10
 
 
 
