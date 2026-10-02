@@ -1,6 +1,8 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
+from schemas.inscripcion import Inscripcion 
+
 from models.alumno import Alumno
 from schemas.alumno import (
     Alumno as AlumnoSchema,
@@ -149,6 +151,9 @@ def eliminar_alumno(
         if alumno.calificaciones:
             for calificacion in list(alumno.calificaciones):
                 db.delete(calificacion)
+
+        for inscripcion in list(alumno.inscripciones):
+            db.delete(inscripcion)
 
         db.delete(alumno)
         db.commit()

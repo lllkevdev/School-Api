@@ -126,7 +126,11 @@ def eliminar_materia(
 
     if materia.calificaciones:
         return None, "tiene_calificaciones"
+    
     try:
+        for inscripcion in list(materia.inscripciones):
+            db.delete(inscripcion)
+
         db.delete(materia)
         db.commit()
     except IntegrityError:

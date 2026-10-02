@@ -132,7 +132,7 @@ def test_crear_inscripcion_duplicada(client):
     )
 
     assert segunda.status_code == 409
-
+    assert segunda.json()["detail"] == "El alumno ya esta inscripto en la materia"  
 
 
 def test_crear_inscripcion_sin_permiso_maestro(

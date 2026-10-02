@@ -1,5 +1,8 @@
 from models.materia import Materia
 from models.usuario import Usuario
+from models.inscripcion import Inscripcion
+from models.alumno import Alumno
+from models.calificacion import Calificacion
 
 from schemas.roles import Rol
 
@@ -290,9 +293,6 @@ def test_actualizar_materia_sin_permiso(client, db, usuario_maestro):
     assert response.status_code == 403
 
 
-
-
-
 def test_actualizar_materia_parcialmente_sin_permiso(client, db, usuario_maestro):
     materia = Materia(nombre="Matematica")
 
@@ -313,9 +313,6 @@ def test_actualizar_materia_parcialmente_sin_permiso(client, db, usuario_maestro
     assert response.status_code == 403
 
 
-
-
-
 def test_eliminar_materia_sin_permiso(client, db, usuario_maestro):
     materia = Materia(nombre="Matematica")
 
@@ -328,9 +325,6 @@ def test_eliminar_materia_sin_permiso(client, db, usuario_maestro):
     response = client.delete(f"/materias/{materia_id}")
 
     assert response.status_code == 403
-
-
-
 
 
 def test_materia_asignada_a_maestro(db):
@@ -353,3 +347,79 @@ def test_materia_asignada_a_maestro(db):
     assert materia.maestro.id == maestro.id
     assert materia.maestro.email == "juan@test.com"
     assert materia in maestro.materias
+
+
+def test_eliminar_materia_con_inscripcion_sin_calificacion(client, db):
+    alumno = Alumno(
+        nombre="Juan",
+        apellido="Perez",
+        edad=20,
+    )
+
+    materia = Materia(
+        nombre="Matematica",
+    )
+
+    db.add_all([alumno, materia])
+    db.commit()
+
+    inscripcion = Inscripcion(
+        alumno_id=alumno.id,
+        materia_id=materia.id,
+    )
+
+    db.add(inscripcion)
+    db.commit()
+
+    response = client.delete(f"/materias/{materia.id}")
+
+    assert response.status_code == 204
+
+    inscripcion_existente = db.query(Inscripcion).filter(
+        Inscripcion.materia_id == materia.id
+    ).first()
+
+    assert inscripcion_existente is None
+
+
+def test_no_eliminar_materia_con_calificaciones(client, db, usuario_admin):
+    alumno = Alumno(
+        nombre="Juan",
+        apellido="Perez",
+        edad=20,
+    )
+
+    materia = Materia(
+        nombre="Matematica",
+    )
+
+    db.add_all([alumno, materia])
+    db.commit()
+
+    inscripcion = Inscripcion(
+        alumno_id=alumno.id,
+        materia_id=materia.id,
+    )
+
+    db.add(inscripcion)
+    db.commit()
+
+    calificacion = Calificacion(
+        alumno_id=alumno.id,
+        materia_id=materia.id,
+        nota=8,
+        periodo=1,
+    )
+
+    db.add(calificacion)
+    db.commit()
+
+    response = client.delete(
+        f"/materias/{materia.id}"
+    )
+
+    assert response.status_code == 409
+
+    assert response.json() == {
+        "detail": "No se puede eliminar la materia porque tiene calificaciones asociadas"
+    }

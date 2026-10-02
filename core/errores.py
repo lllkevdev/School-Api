@@ -34,6 +34,11 @@ ERRORES_HTTP = {
         "Ya existe una calificación para ese alumno, materia y periodo"
     ),
 
+    "inscripcion_conflicto": (
+        409,
+        "El alumno ya esta inscripto en la materia"
+    ),
+
     "maestro": (
         403,
         "No tiene permiso para modificar esta calificacion"

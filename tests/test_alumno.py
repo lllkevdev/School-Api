@@ -4,11 +4,13 @@ from fastapi.testclient import TestClient
 from app import main
 
 from database.dependencies import get_db
+from schemas.inscripcion import Inscripcion
 from tests.conftest import override_get_db
 
 from models.alumno import Alumno
 from models.materia import Materia
 from models.usuario import Usuario
+from models.inscripcion import Inscripcion
 from models.calificacion import Calificacion
 
 from core.permisos import Rol
@@ -370,9 +372,6 @@ def test_obtener_alumno_con_calificaciones(client, usuario_admin):
 
 
 
-
-
-
 def test_crear_alumno_sin_permiso(client, usuario_maestro):
     response = client.post(
         "/alumnos/",
@@ -645,3 +644,101 @@ def test_maestro_solo_puede_ver_calificaciones_de_sus_materias(
     assert data["calificaciones"][0]["materia"] == "Matematicas"
     assert data["calificaciones"][0]["nota"] == 10
     assert data["promedio"] == 10.0
+
+
+
+def test_eliminar_alumno_con_inscripcion_sin_calificacion(client, db):
+    alumno = Alumno(
+        nombre="Juan",
+        apellido="Perez",
+        edad=20,
+    )
+
+    materia = Materia(
+        nombre="Matematica",
+    )
+
+    db.add_all([alumno, materia])
+    db.commit()
+
+    inscripcion = Inscripcion(
+        alumno_id=alumno.id,
+        materia_id=materia.id,
+    )
+
+    db.add(inscripcion)
+    db.commit()
+
+    response = client.delete(f"/alumnos/{alumno.id}")
+
+    assert response.status_code == 204
+
+    inscripcion_existente = db.query(Inscripcion).filter(
+        Inscripcion.alumno_id == alumno.id
+    ).first()
+
+    assert inscripcion_existente is None
+
+
+def test_eliminar_alumno_con_calificaciones_forzado(
+    client,
+    db, 
+    usuario_admin
+):
+    response = client.post(
+        "/alumnos/",
+        json={
+            "nombre": "Juan",
+            "apellido": "Pérez",
+            "edad": 20,
+        }
+    )
+
+    alumno_id = response.json()["id"]
+
+    response = client.post(
+        "/materias/",
+        json={
+            "nombre": "Matemáticas",
+        }
+    )
+
+    materia_id = response.json()["id"]
+
+    response = client.post(
+        "/inscripciones/",
+        json={
+            "alumno_id": alumno_id,
+            "materia_id": materia_id,
+        }
+    )
+
+    assert response.status_code == 201
+
+    response = client.post(
+        "/calificaciones/",
+        json={
+            "alumno_id": alumno_id,
+            "materia_id": materia_id,
+            "nota": 8,
+            "periodo": 1,
+        }
+    )
+
+    assert response.status_code == 201
+
+    response = client.delete(
+        f"/alumnos/{alumno_id}?forzar=true"
+    )
+
+    inscripcion_existente = db.query(Inscripcion).filter(
+        Inscripcion.alumno_id == alumno_id
+    ).first()
+
+    assert inscripcion_existente is None
+    
+    assert response.status_code == 204
+
+    response = client.get(f"/alumnos/{alumno_id}")
+
+    assert response.status_code == 404

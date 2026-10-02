@@ -37,7 +37,7 @@ def crear_inscripcion(
         db.refresh(nueva_inscripcion)
     except IntegrityError:
         db.rollback()
-        return None, "conflicto"
+        return None, "inscripcion_conflicto"
 
     return nueva_inscripcion, None
 
