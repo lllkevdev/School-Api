@@ -9,10 +9,10 @@ from schemas.materia import (
 
 
 def crear_materia(
-    db: Session, 
+    db: Session,
     materia: MateriaSchema
-) -> Materia:
-    
+) -> tuple[Materia | None, str | None]:
+
     nueva_materia = Materia(
         nombre=materia.nombre
     )
@@ -22,11 +22,11 @@ def crear_materia(
         db.commit()
         db.refresh(nueva_materia)
 
-        return nueva_materia
+        return nueva_materia, None
 
     except IntegrityError:
         db.rollback()
-        raise
+        return None, "materia_conflicto"
 
 
 def obtener_materias(
@@ -34,7 +34,6 @@ def obtener_materias(
 ) -> list[Materia]:
     
     return db.query(Materia).all()
-
 
 
 def buscar_materia(
@@ -52,31 +51,33 @@ def buscar_materia(
     return materia, None
 
 
-
 def actualizar_materia(
-    db: Session, 
-    materia_id: int, 
+    db: Session,
+    materia_id: int,
     materia: MateriaSchema
-) -> Materia | None:
-    
-    materia_existente, error = buscar_materia(db, materia_id)
+) -> tuple[Materia | None, str | None]:
+
+    materia_existente, error = buscar_materia(
+        db,
+        materia_id
+    )
 
     if error:
-        return None
+        return None, error
 
-    if not materia_existente:
-        return None
+    if materia_existente is None:
+        return None, "materia"
 
     materia_existente.nombre = materia.nombre
 
     try:
         db.commit()
         db.refresh(materia_existente)
-        return materia_existente
+        return materia_existente, None
+
     except IntegrityError:
         db.rollback()
-        raise
-
+        return None, "materia_conflicto"
 
 
 def actualizar_materia_parcialmente(
@@ -107,8 +108,7 @@ def actualizar_materia_parcialmente(
         return materia_existente, None
     except IntegrityError:
         db.rollback()
-        raise
-
+        return None, "materia_conflicto"
 
 
 def eliminar_materia(
@@ -127,14 +127,11 @@ def eliminar_materia(
     if materia.calificaciones:
         return None, "tiene_calificaciones"
     
-    try:
-        for inscripcion in list(materia.inscripciones):
-            db.delete(inscripcion)
 
-        db.delete(materia)
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise
+    for inscripcion in list(materia.inscripciones):
+        db.delete(inscripcion)
+
+    db.delete(materia)
+    db.commit()
 
     return materia, None

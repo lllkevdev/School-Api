@@ -222,16 +222,10 @@ def test_alumno_no_puede_ver_calificacion_de_otro_alumno(client, db):
     app.dependency_overrides[get_usuario_actual] = usuario_alumno_override
 
     response = client.get(f"/calificaciones/{calificacion.id}")
-
-    print(response.status_code)
-    print(response.json())
     
     app.dependency_overrides.pop(get_usuario_actual, None)
 
     assert response.status_code == 403
-
-
-
 
 
 def test_crear_usuario_email_duplicado(db):

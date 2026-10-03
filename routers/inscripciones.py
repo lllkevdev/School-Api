@@ -38,8 +38,6 @@ def crear(
     return resultado
 
 
-
-
 @router.delete(
     "/{inscripcion_id}",
     status_code=status.HTTP_204_NO_CONTENT,

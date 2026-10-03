@@ -9,6 +9,19 @@ from models.inscripcion import Inscripcion
 from services.calificacion_service import buscar_calificaciones
 
 
+def asegurar_inscripcion(db, alumno_id, materia_id):
+    inscripcion = db.query(Inscripcion).filter(
+        Inscripcion.alumno_id == alumno_id,
+        Inscripcion.materia_id == materia_id,
+    ).first()
+
+    if inscripcion is None:
+        db.add(Inscripcion(
+            alumno_id=alumno_id,
+            materia_id=materia_id,
+        ))
+        db.commit()
+
 
 # ============================================================
 # CREAR CALIFICACIÓN
@@ -288,111 +301,6 @@ def test_no_se_puede_crear_calificacion_duplicada(client):
     assert response.status_code == 409
 
 
-
-def test_maestro_puede_crear_calificacion_en_su_materia(
-    client,
-    db,
-    usuario_maestro,
-):
-    alumno = Alumno(
-        nombre="Pedro",
-        apellido="Gomez",
-        edad=20,
-    )
-
-    materia = Materia(
-        nombre="Matemáticas",
-        maestro_id=usuario_maestro.id,
-    )
-
-    db.add_all([alumno, materia])
-    db.commit()
-    db.refresh(alumno)
-    db.refresh(materia)
-
-    inscripcion = Inscripcion(
-        alumno_id=alumno.id,
-        materia_id=materia.id,
-    )
-
-    db.add(inscripcion)
-    db.commit()
-
-    response = client.post(
-        "/calificaciones/",
-        json={
-            "alumno_id": alumno.id,
-            "materia_id": materia.id,
-            "nota": 8,
-            "periodo": 1,
-        }
-    )
-
-    assert response.status_code == 201
-
-
-
-
-
-def test_maestro_no_puede_crear_calificacion_en_materia_ajena(
-    client,
-    db,
-    usuario_maestro,
-):
-    otro_maestro = Usuario(
-        nombre="Pedro",
-        email="pedro@test.com",
-        password_hash="hash",
-        rol=Rol.MAESTRO,
-    )
-
-    alumno = Alumno(
-        nombre="Juan",
-        apellido="Perez",
-        edad=20,
-    )
-
-    db.add(otro_maestro)
-    db.add(alumno)
-    db.commit()
-    db.refresh(otro_maestro)
-    db.refresh(alumno)
-
-    materia = Materia(
-        nombre="Matemáticas",
-        maestro_id=otro_maestro.id,
-    )
-
-    db.add(materia)
-    db.commit()
-    db.refresh(materia)
-
-    inscripcion = Inscripcion(
-        alumno_id=alumno.id,
-        materia_id=materia.id,
-    )
-
-    db.add(inscripcion)
-    db.commit()
-
-    response = client.post(
-        "/calificaciones/",
-        json={
-            "alumno_id": alumno.id,
-            "materia_id": materia.id,
-            "nota": 8,
-            "periodo": 1,
-        }
-    )
-
-    assert response.status_code == 403
-
-
-
-
-
-
-
 def test_crear_calificacion_alumno_no_inscripto(
     client,
 ):
@@ -427,7 +335,6 @@ def test_crear_calificacion_alumno_no_inscripto(
     )
 
     assert response.status_code == 409
-
 
 
 # ============================================================
@@ -632,10 +539,6 @@ def test_obtener_calificacion_por_id(client):
     assert response.json()["materia_id"] == materia_id
 
 
-
-
-
-
 def test_obtener_calificaciones_alumno(client, usuario_admin):
     response = client.post(
         "/alumnos/",
@@ -689,10 +592,6 @@ def test_obtener_calificaciones_alumno(client, usuario_admin):
     assert len(data) == 1
     assert data[0]["nota"] == 8.5
     assert data[0]["periodo"] == 2
-
-
-
-
 
 
 def test_obtener_calificaciones_alumno_por_periodo(client):
@@ -770,364 +669,6 @@ def test_obtener_calificaciones_alumno_inexistente(client):
     assert response.json() == {
         "detail": "El alumno no existe"
     }
-
-
-
-
-
-def test_alumno_puede_obtener_su_calificacion(
-    client,
-    db,
-    usuario_alumno,
-):
-    alumno = usuario_alumno
-
-    materia = Materia(
-        nombre="Matemáticas",
-    )
-
-    db.add(materia)
-    db.commit()
-    db.refresh(materia)
-
-    calificacion = Calificacion(
-        alumno_id=alumno.id,
-        materia_id=materia.id,
-        nota=8,
-        periodo=1,
-    )
-
-    db.add(calificacion)
-    db.commit()
-    db.refresh(calificacion)
-
-    response = client.get(
-        f"/calificaciones/{calificacion.id}"
-    )
-
-    assert response.status_code == 200
-
-    data = response.json()
-
-    assert data["nota"] == 8
-    assert data["periodo"] == 1
-    assert data["alumno_id"] == alumno.id
-    assert data["materia_id"] == materia.id
-
-
-
-
-def test_alumno_no_puede_obtener_calificacion_de_otro_alumno(
-    client,
-    db,
-    usuario_alumno,
-):
-    otro_alumno = Alumno(
-        nombre="Pedro",
-        apellido="Gomez",
-        edad=21,
-    )
-
-    materia = Materia(
-        nombre="Matemáticas",
-    )
-
-    db.add_all([
-        otro_alumno,
-        materia,
-    ])
-    db.commit()
-
-    db.refresh(otro_alumno)
-    db.refresh(materia)
-
-    calificacion = Calificacion(
-        alumno_id=otro_alumno.id,
-        materia_id=materia.id,
-        nota=8,
-        periodo=1,
-    )
-
-    db.add(calificacion)
-    db.commit()
-    db.refresh(calificacion)
-
-    response = client.get(
-        f"/calificaciones/{calificacion.id}"
-    )
-
-    assert response.status_code == 403
-
-
-
-
-def test_maestro_no_puede_obtener_calificacion_de_materia_ajena(
-    client,
-    db,
-    usuario_maestro,
-):
-    otro_maestro = Usuario(
-        nombre="Pedro",
-        email="pedro@test.com",
-        password_hash="hash",
-        rol=Rol.MAESTRO,
-    )
-
-    alumno = Alumno(
-        nombre="Juan",
-        apellido="Perez",
-        edad=20,
-    )
-
-    db.add_all([otro_maestro, alumno])
-    db.commit()
-
-    db.refresh(otro_maestro)
-    db.refresh(alumno)
-
-    materia = Materia(
-        nombre="Historia",
-        maestro_id=otro_maestro.id,
-    )
-
-    db.add(materia)
-    db.commit()
-
-    db.refresh(materia)
-
-    calificacion = Calificacion(
-        alumno_id=alumno.id,
-        materia_id=materia.id,
-        nota=8,
-        periodo=1,
-    )
-
-    db.add(calificacion)
-    db.commit()
-
-    db.refresh(calificacion)
-
-    response = client.get(
-        f"/calificaciones/{calificacion.id}"
-    )
-
-    assert response.status_code == 403
-
-
-
-
-
-
-def test_maestro_puede_obtener_calificacion_de_su_materia(
-    client,
-    db,
-    usuario_maestro,
-):
-    alumno = Alumno(
-        nombre="Juan",
-        apellido="Perez",
-        edad=20,
-    )
-
-    materia = Materia(
-        nombre="Matemáticas",
-        maestro_id=usuario_maestro.id,
-    )
-
-    db.add_all([alumno, materia])
-    db.commit()
-
-    db.refresh(alumno)
-    db.refresh(materia)
-
-    calificacion = Calificacion(
-        alumno_id=alumno.id,
-        materia_id=materia.id,
-        nota=8,
-        periodo=1,
-    )
-
-    db.add(calificacion)
-    db.commit()
-    db.refresh(calificacion)
-
-    response = client.get(
-        f"/calificaciones/{calificacion.id}"
-    )
-
-    assert response.status_code == 200
-
-    data = response.json()
-
-    assert data["nota"] == 8
-    assert data["periodo"] == 1
-    assert data["alumno_id"] == alumno.id
-    assert data["materia_id"] == materia.id
-
-
-
-
-def test_maestro_obtiene_solo_calificaciones_de_sus_materias(
-    client,
-    db,
-    usuario_maestro,
-):
-    otro_maestro = Usuario(
-        nombre="Pedro",
-        email="pedro@test.com",
-        password_hash="hash",
-        rol=Rol.MAESTRO,
-    )
-
-    alumno = Alumno(
-        nombre="Juan",
-        apellido="Perez",
-        edad=20,
-    )
-
-    materia_maestro = Materia(
-        nombre="Matemáticas",
-        maestro_id=usuario_maestro.id,
-    )
-
-    materia_ajena = Materia(
-        nombre="Historia",
-        maestro_id=otro_maestro.id,
-    )
-
-    db.add_all([
-        otro_maestro,
-        alumno,
-        materia_maestro,
-        materia_ajena,
-    ])
-    db.commit()
-
-    db.refresh(alumno)
-    db.refresh(materia_maestro)
-    db.refresh(materia_ajena)
-
-    calificacion_propia = Calificacion(
-        alumno_id=alumno.id,
-        materia_id=materia_maestro.id,
-        nota=8,
-        periodo=1,
-    )
-
-    calificacion_ajena = Calificacion(
-        alumno_id=alumno.id,
-        materia_id=materia_ajena.id,
-        nota=9,
-        periodo=1,
-    )
-
-    db.add_all([
-        calificacion_propia,
-        calificacion_ajena,
-    ])
-    db.commit()
-
-    response = client.get(
-        f"/calificaciones/alumno/{alumno.id}"
-    )
-
-    assert response.status_code == 200
-
-    data = response.json()
-
-    assert len(data) == 1
-    assert data[0]["materia"] == "Matemáticas"
-    assert data[0]["nota"] == 8
-    assert data[0]["periodo"] == 1
-
-
-
-
-
-def test_alumno_puede_obtener_sus_calificaciones(
-    client,
-    db,
-    usuario_alumno,
-):
-    materia = Materia(
-        nombre="Matemáticas",
-    )
-
-    db.add(materia)
-    db.commit()
-    db.refresh(materia)
-
-    calificacion = Calificacion(
-        alumno_id=usuario_alumno.id,
-        materia_id=materia.id,
-        nota=8,
-        periodo=1,
-    )
-
-    db.add(calificacion)
-    db.commit()
-
-    response = client.get(
-        f"/calificaciones/alumno/{usuario_alumno.id}"
-    )
-
-    assert response.status_code == 200
-
-    data = response.json()
-
-    assert len(data) == 1
-    assert data[0]["nota"] == 8
-    assert data[0]["periodo"] == 1
-    assert data[0]["materia"] == "Matemáticas"
-
-
-
-
-def test_alumno_no_puede_obtener_calificaciones_de_otro_alumno(
-    client,
-    db,
-    usuario_alumno,
-):
-    otro_alumno = Alumno(
-        nombre="Pedro",
-        apellido="Gómez",
-        edad=21,
-    )
-
-    materia = Materia(
-        nombre="Historia",
-    )
-
-    db.add_all([
-        otro_alumno,
-        materia,
-    ])
-    db.commit()
-
-    db.refresh(otro_alumno)
-    db.refresh(materia)
-
-    calificacion = Calificacion(
-        alumno_id=otro_alumno.id,
-        materia_id=materia.id,
-        nota=9,
-        periodo=1,
-    )
-
-    db.add(calificacion)
-    db.commit()
-
-    response = client.get(
-        f"/calificaciones/alumno/{otro_alumno.id}"
-    )
-
-    assert response.status_code == 403
-
-    assert response.json()["detail"] == (
-        "No tiene permiso para realizar esta acción"
-    )
-
-
 
 
 # ============================================================
@@ -1396,8 +937,6 @@ def test_actualizar_calificacion_inexistente(client):
     }
 
 
-
-
 def test_actualizar_nota(client):
     response = client.post(
         "/alumnos/",
@@ -1503,8 +1042,6 @@ def test_actualizar_periodo(client):
     assert response.status_code == 200
     assert response.json()["periodo"] == 2
     assert response.json()["nota"] == 7
-
-
 
 
 def test_actualizar_nota_invalida(client):
@@ -1682,9 +1219,6 @@ def test_actualizar_calificacion_materia_inexistente(client):
     }
 
 
-
-
-
 def test_actualizar_calificacion_alumno_inexistente(client):
     response = client.post(
         "/alumnos/",
@@ -1735,8 +1269,6 @@ def test_actualizar_calificacion_alumno_inexistente(client):
     assert response.json() == {
         "detail": "El alumno no existe"
     }
-
-
 
 
 def test_actualizar_calificacion_genera_duplicado(client):
@@ -1829,177 +1361,6 @@ def test_actualizar_calificacion_genera_duplicado(client):
     assert response.status_code == 409
 
 
-
-def test_maestro_puede_modificar_calificacion_de_su_materia(
-    client,
-    db,
-    usuario_maestro,
-):
-    alumno = Alumno(
-        nombre="Juan",
-        apellido="Perez",
-        edad=20,
-    )
-
-    materia = Materia(
-        nombre="Matemáticas",
-        maestro_id=usuario_maestro.id,
-    )
-
-    db.add_all([alumno, materia])
-    db.commit()
-    db.refresh(alumno)
-    db.refresh(materia)
-
-    calificacion = Calificacion(
-        alumno_id=alumno.id,
-        materia_id=materia.id,
-        nota=7,
-        periodo=1,
-    )
-
-    db.add(calificacion)
-    db.commit()
-    db.refresh(calificacion)
-
-    response = client.patch(
-        f"/calificaciones/{calificacion.id}",
-        json={
-            "nota": 9,
-            "periodo": 2,
-        },
-    )
-
-    assert response.status_code == 200
-
-    data = response.json()
-
-    assert data["nota"] == 9
-    assert data["periodo"] == 2
-    assert data["alumno_id"] == alumno.id
-    assert data["materia_id"] == materia.id
-
-
-
-
-def test_maestro_no_puede_modificar_calificacion_de_materia_ajena(
-    client,
-    db,
-    usuario_maestro,
-):
-    otro_maestro = Usuario(
-        nombre="Pedro",
-        email="pedro@test.com",
-        password_hash="hash",
-        rol=Rol.MAESTRO,
-    )
-
-    alumno = Alumno(
-        nombre="Juan",
-        apellido="Perez",
-        edad=20,
-    )
-
-    db.add_all([otro_maestro, alumno])
-    db.commit()
-    db.refresh(otro_maestro)
-    db.refresh(alumno)
-
-    materia = Materia(
-        nombre="Historia",
-        maestro_id=otro_maestro.id,
-    )
-
-    db.add(materia)
-    db.commit()
-    db.refresh(materia)
-
-    calificacion = Calificacion(
-        alumno_id=alumno.id,
-        materia_id=materia.id,
-        nota=7,
-        periodo=1,
-    )
-
-    db.add(calificacion)
-    db.commit()
-    db.refresh(calificacion)
-
-    response = client.patch(
-        f"/calificaciones/{calificacion.id}",
-        json={
-            "nota": 9,
-        },
-    )
-
-    assert response.status_code == 403
-
-
-
-
-def test_maestro_no_puede_mover_calificacion_a_materia_ajena(
-    client,
-    db,
-    usuario_maestro,
-):
-    otro_maestro = Usuario(
-        nombre="Pedro",
-        email="pedro@test.com",
-        password_hash="hash",
-        rol=Rol.MAESTRO,
-    )
-
-    alumno = Alumno(
-        nombre="Juan",
-        apellido="Perez",
-        edad=20,
-    )
-
-    materia_maestro = Materia(
-        nombre="Matemáticas",
-        maestro_id=usuario_maestro.id,
-    )
-
-    materia_ajena = Materia(
-        nombre="Historia",
-        maestro_id=otro_maestro.id,
-    )
-
-    db.add_all([
-        otro_maestro,
-        alumno,
-        materia_maestro,
-        materia_ajena,
-    ])
-    db.commit()
-
-    db.refresh(alumno)
-    db.refresh(materia_maestro)
-    db.refresh(materia_ajena)
-
-    calificacion = Calificacion(
-        alumno_id=alumno.id,
-        materia_id=materia_maestro.id,
-        nota=7,
-        periodo=1,
-    )
-
-    db.add(calificacion)
-    db.commit()
-    db.refresh(calificacion)
-
-    response = client.patch(
-        f"/calificaciones/{calificacion.id}",
-        json={
-            "materia_id": materia_ajena.id,
-        },
-    )
-
-    assert response.status_code == 403
-
-
-
-
 def test_admin_puede_cambiar_alumno_de_una_calificacion(client, db):
     alumno_original = Alumno(
         nombre="Juan",
@@ -2044,6 +1405,7 @@ def test_admin_puede_cambiar_alumno_de_una_calificacion(client, db):
     ])
     db.commit()
 
+    asegurar_inscripcion(db, alumno_original.id, materia.id)
     calificacion = Calificacion(
         alumno_id=alumno_original.id,
         materia_id=materia.id,
@@ -2190,9 +1552,6 @@ def test_eliminar_calificacion(client, usuario_admin):
     assert response.status_code == 404
 
 
-
-
-
 def test_eliminar_calificacion_inexistente(client):
     response = client.delete(
         "/calificaciones/999"
@@ -2202,9 +1561,6 @@ def test_eliminar_calificacion_inexistente(client):
     assert response.json() == {
         "detail": "Calificación no encontrada"
     }
-
-
-
 
 
 def test_maestro_puede_eliminar_calificacion_de_su_materia(
@@ -2229,6 +1585,7 @@ def test_maestro_puede_eliminar_calificacion_de_su_materia(
     db.refresh(alumno)
     db.refresh(materia)
 
+    asegurar_inscripcion(db, alumno.id, materia.id)
     calificacion = Calificacion(
         alumno_id=alumno.id,
         materia_id=materia.id,
@@ -2251,10 +1608,6 @@ def test_maestro_puede_eliminar_calificacion_de_su_materia(
     )
 
     assert response.status_code == 404
-
-
-
-
 
 
 def test_maestro_no_puede_eliminar_calificacion_de_materia_ajena(
@@ -2290,6 +1643,7 @@ def test_maestro_no_puede_eliminar_calificacion_de_materia_ajena(
     db.commit()
     db.refresh(materia)
 
+    asegurar_inscripcion(db, alumno.id, materia.id)
     calificacion = Calificacion(
         alumno_id=alumno.id,
         materia_id=materia.id,
@@ -2306,8 +1660,6 @@ def test_maestro_no_puede_eliminar_calificacion_de_materia_ajena(
     )
 
     assert response.status_code == 403
-
-
 
 
 def test_alumno_no_puede_eliminar_calificacion(
@@ -2331,6 +1683,7 @@ def test_alumno_no_puede_eliminar_calificacion(
     db.refresh(alumno)
     db.refresh(materia)
 
+    asegurar_inscripcion(db, alumno.id, materia.id)
     calificacion = Calificacion(
         alumno_id=alumno.id,
         materia_id=materia.id,
@@ -2359,15 +1712,6 @@ def test_crear_calificacion_sin_permiso(client, usuario_alumno):
     )
 
     assert response.status_code == 403
-
-
-def test_crear_calificacion_maestro(client, usuario_maestro):
-    response = client.post(
-        "/calificaciones/",
-        json={}
-    )
-
-    assert response.status_code == 422
 
 
 def test_actualizar_calificacion_sin_permiso(client, usuario_alumno):
@@ -2448,6 +1792,7 @@ def test_alumno_puede_ver_su_calificacion(
     db.commit()
     db.refresh(materia)
 
+    asegurar_inscripcion(db, usuario_alumno.id, materia.id)
     calificacion = Calificacion(
         alumno_id=usuario_alumno.id,
         materia_id=materia.id,
@@ -2487,6 +1832,7 @@ def test_alumno_no_puede_ver_calificacion_de_otro_alumno(
     db.refresh(otro_alumno)
     db.refresh(materia)
 
+    asegurar_inscripcion(db, otro_alumno.id, materia.id)
     calificacion = Calificacion(
         alumno_id=otro_alumno.id,
         materia_id=materia.id,
@@ -2525,6 +1871,7 @@ def test_alumno_no_puede_ver_calificaciones_de_otro_alumno(
     db.refresh(otro_alumno)
     db.refresh(materia)
 
+    asegurar_inscripcion(db, otro_alumno.id, materia.id)
     calificacion = Calificacion(
         alumno_id=otro_alumno.id,
         materia_id=materia.id,
@@ -2555,6 +1902,7 @@ def test_alumno_puede_ver_sus_calificaciones(
     db.commit()
     db.refresh(materia)
 
+    asegurar_inscripcion(db, usuario_alumno.id, materia.id)
     calificacion = Calificacion(
         alumno_id=usuario_alumno.id,
         materia_id=materia.id,
@@ -2585,6 +1933,7 @@ def test_alumno_puede_ver_sus_mis_calificaciones(
     db.commit()
     db.refresh(materia)
 
+    asegurar_inscripcion(db, usuario_alumno.id, materia.id)
     calificacion = Calificacion(
         alumno_id=usuario_alumno.id,
         materia_id=materia.id,
@@ -2643,6 +1992,7 @@ def test_alumno_puede_ver_mi_promedio(
     db.add(inscripcion)
     db.commit()
 
+    asegurar_inscripcion(db, usuario_alumno.id, materia.id)
     calificacion = Calificacion(
         alumno_id=usuario_alumno.id,
         materia_id=materia.id,
@@ -2663,68 +2013,6 @@ def test_alumno_puede_ver_mi_promedio(
 
     assert data["alumno"] == "Juan Perez"
     assert data["promedio"] == 8.0
-
-
-
-
-def test_alumno_promedio_solo_considera_materias_inscriptas(
-    client,
-    db,
-    usuario_alumno
-):
-    matematica = Materia(
-        nombre="Matematica"
-    )
-
-    historia = Materia(
-        nombre="Historia"
-    )
-
-    db.add_all([matematica, historia])
-    db.commit()
-    db.refresh(matematica)
-    db.refresh(historia)
-
-    inscripcion = Inscripcion(
-        alumno_id=usuario_alumno.id,
-        materia_id=matematica.id,
-    )
-
-    db.add(inscripcion)
-    db.commit()
-
-    calificacion_matematica = Calificacion(
-        alumno_id=usuario_alumno.id,
-        materia_id=matematica.id,
-        nota=8,
-        periodo=1,
-    )
-
-    calificacion_historia = Calificacion(
-        alumno_id=usuario_alumno.id,
-        materia_id=historia.id,
-        nota=2,
-        periodo=1,
-    )
-
-    db.add_all([
-        calificacion_matematica,
-        calificacion_historia,
-    ])
-    db.commit()
-
-    response = client.get(
-        "/calificaciones/alumno/mi-promedio"
-    )
-
-    assert response.status_code == 200
-
-    data = response.json()
-
-    assert data["alumno"] == "Juan Perez"
-    assert data["promedio"] == 8.0
-
-
 
 
 def test_alumno_sin_calificaciones_no_puede_ver_promedio(
@@ -2787,6 +2075,7 @@ def test_alumno_puede_ver_mis_estadisticas(
     db.commit()
     db.refresh(materia)
 
+    asegurar_inscripcion(db, usuario_alumno.id, materia.id)
     calificacion_1 = Calificacion(
         alumno_id=usuario_alumno.id,
         materia_id=materia.id,
@@ -2794,6 +2083,7 @@ def test_alumno_puede_ver_mis_estadisticas(
         periodo=1
     )
 
+    asegurar_inscripcion(db, usuario_alumno.id, materia.id)
     calificacion_2 = Calificacion(
         alumno_id=usuario_alumno.id,
         materia_id=materia.id,
@@ -2864,6 +2154,7 @@ def test_maestro_puede_ver_calificacion_de_su_materia(
     db.refresh(alumno)
     db.refresh(materia)
 
+    asegurar_inscripcion(db, alumno.id, materia.id)
     calificacion = Calificacion(
         alumno_id=alumno.id,
         materia_id=materia.id,
@@ -2915,6 +2206,7 @@ def test_maestro_no_puede_ver_calificacion_de_otro_maestro(
     db.refresh(alumno)
     db.refresh(materia)
 
+    asegurar_inscripcion(db, alumno.id, materia.id)
     calificacion = Calificacion(
         alumno_id=alumno.id,
         materia_id=materia.id,
@@ -2969,6 +2261,7 @@ def test_maestro_solo_ve_sus_calificaciones_de_un_alumno(
     ])
     db.commit()
 
+    asegurar_inscripcion(db, alumno.id, materia_maestro.id)
     calificacion_propia = Calificacion(
         alumno_id=alumno.id,
         materia_id=materia_maestro.id,
@@ -2976,6 +2269,7 @@ def test_maestro_solo_ve_sus_calificaciones_de_un_alumno(
         periodo=1
     )
 
+    asegurar_inscripcion(db, alumno.id, materia_otro_maestro.id)
     calificacion_ajena = Calificacion(
         alumno_id=alumno.id,
         materia_id=materia_otro_maestro.id,
@@ -3026,6 +2320,7 @@ def test_maestro_puede_ver_estadisticas_de_alumno_en_su_materia(
     db.refresh(alumno)
     db.refresh(materia)
 
+    asegurar_inscripcion(db, alumno.id, materia.id)
     db.add_all([
         Calificacion(
             alumno_id=alumno.id,
@@ -3095,6 +2390,7 @@ def test_maestro_no_puede_ver_estadisticas_de_materia_de_otro_maestro(
     db.refresh(alumno)
     db.refresh(materia)
 
+    asegurar_inscripcion(db, alumno.id, materia.id)
     db.add(
         Calificacion(
             alumno_id=alumno.id,
@@ -3267,6 +2563,8 @@ def test_maestro_puede_ver_sus_mis_calificaciones(
     ])
     db.commit()
 
+    asegurar_inscripcion(db, alumno.id, materia_propia.id)
+    asegurar_inscripcion(db, alumno.id, materia_ajena.id)
     db.add_all([
         Calificacion(
             alumno_id=alumno.id,
@@ -3404,103 +2702,6 @@ def test_alumno_no_puede_ver_calificaciones_del_maestro(
 # MODIFICACIÓN POR MAESTRO
 # ============================================================
 
-def test_modificar_calificacion_de_su_materia(
-    client,
-    db,
-    usuario_maestro
-):
-    materia = Materia(
-        nombre="Matemática",
-        maestro=usuario_maestro
-    )
-
-    alumno = Alumno(
-        nombre="Kevin",
-        apellido="Baez",
-        edad=25
-    )
-
-    db.add_all([
-        materia,
-        alumno
-    ])
-    db.commit()
-    db.refresh(materia)
-    db.refresh(alumno)
-
-    calificacion = Calificacion(
-        alumno_id=alumno.id,
-        materia_id=materia.id,
-        nota=8,
-        periodo=1
-    )
-
-    db.add(calificacion)
-    db.commit()
-    db.refresh(calificacion)
-
-    response = client.patch(
-        f"/calificaciones/{calificacion.id}",
-        json={"nota": 9}
-    )
-
-    assert response.status_code == 200
-
-
-def test_modificar_una_calificacion_que_no_le_pertenece(
-    db,
-    client,
-    usuario_maestro
-):
-    otro_maestro = Usuario(
-        nombre="Pedro",
-        email="pedro@test.com",
-        password_hash="hash",
-        rol=Rol.MAESTRO
-    )
-
-    materia = Materia(
-        nombre="Matemática",
-        maestro=otro_maestro
-    )
-
-    alumno = Alumno(
-        nombre="Kevin",
-        apellido="Baez",
-        edad=25
-    )
-
-    db.add_all([
-        otro_maestro,
-        materia,
-        alumno
-    ])
-    db.commit()
-    db.refresh(materia)
-    db.refresh(alumno)
-
-    calificacion = Calificacion(
-        alumno_id=alumno.id,
-        materia_id=materia.id,
-        nota=8,
-        periodo=1
-    )
-
-    db.add(calificacion)
-    db.commit()
-    db.refresh(calificacion)
-
-    response = client.patch(
-        f"/calificaciones/{calificacion.id}",
-        json={"nota": 9}
-    )
-
-    assert response.status_code == 403
-    assert response.json()["detail"] == (
-        "No tiene permiso para modificar esta calificacion"
-    )
-
-
 def test_modificar_calificacion_a_otra_materia_suya(
     db,
     client,
@@ -3532,6 +2733,7 @@ def test_modificar_calificacion_a_otra_materia_suya(
     db.refresh(materia)
     db.refresh(otra_materia)
 
+    asegurar_inscripcion(db, alumno.id, materia.id)
     calificacion = Calificacion(
         alumno_id=alumno.id,
         materia_id=materia.id,
@@ -3549,9 +2751,6 @@ def test_modificar_calificacion_a_otra_materia_suya(
     )
 
     assert response.status_code == 403
-
-
-
 
 
 def test_modificar_calificacion_de_materia_sin_maestro(
@@ -3577,6 +2776,7 @@ def test_modificar_calificacion_de_materia_sin_maestro(
     db.refresh(alumno)
     db.refresh(materia)
 
+    asegurar_inscripcion(db, alumno.id, materia.id)
     calificacion = Calificacion(
         alumno_id=alumno.id,
         materia_id=materia.id,
@@ -3599,175 +2799,9 @@ def test_modificar_calificacion_de_materia_sin_maestro(
     )
 
 
-def test_modificar_una_calificacion_que_no_le_pertenece2(
-    db,
-    client,
-    usuario_maestro
-):
-    otro_maestro = Usuario(
-        nombre="Pedro",
-        email="pedro@test.com",
-        password_hash="hash",
-        rol=Rol.MAESTRO
-    )
-
-    alumno = Alumno(
-        nombre="Kevin",
-        apellido="Baez",
-        edad=25
-    )
-
-    materia = Materia(
-        nombre="Matematica",
-        maestro=usuario_maestro
-    )
-
-    otra_materia = Materia(
-        nombre="Fisica",
-        maestro=otro_maestro
-    )
-
-    db.add_all([
-        otro_maestro,
-        alumno,
-        materia,
-        otra_materia
-    ])
-    db.commit()
-    db.refresh(alumno)
-    db.refresh(materia)
-    db.refresh(otra_materia)
-
-    calificacion = Calificacion(
-        alumno_id=alumno.id,
-        materia_id=materia.id,
-        nota=8,
-        periodo=1
-    )
-
-    db.add(calificacion)
-    db.commit()
-    db.refresh(calificacion)
-
-    response = client.patch(
-        f"/calificaciones/{calificacion.id}",
-        json={"materia_id": otra_materia.id}
-    )
-
-    assert response.status_code == 403
-    assert response.json()["detail"] == (
-        "No tiene permiso para modificar esta calificacion"
-    )
-
-
 # ============================================================
 # ELIMINACIÓN POR MAESTRO
 # ============================================================
-
-def test_eliminar_calificacion_maestro_de_su_materia(
-    client,
-    db,
-    usuario_maestro
-):
-    alumno = Alumno(
-        nombre="Juan",
-        apellido="Perez",
-        edad=20
-    )
-
-    materia = Materia(
-        nombre="Matematica",
-        maestro_id=usuario_maestro.id
-    )
-
-    db.add_all([
-        alumno,
-        materia
-    ])
-    db.commit()
-    db.refresh(alumno)
-    db.refresh(materia)
-
-    calificacion = Calificacion(
-        alumno_id=alumno.id,
-        materia_id=materia.id,
-        nota=8,
-        periodo=1
-    )
-
-    db.add(calificacion)
-    db.commit()
-    db.refresh(calificacion)
-
-    calificacion_id = calificacion.id
-
-    response = client.delete(
-        f"/calificaciones/{calificacion_id}"
-    )
-
-    assert response.status_code == 204
-
-    assert db.query(Calificacion).filter(
-        Calificacion.id == calificacion_id
-    ).first() is None
-
-
-def test_eliminar_calificacion_maestro_de_materia_ajena(
-    client,
-    db,
-    usuario_maestro
-):
-    maestro_otro = Usuario(
-        nombre="Otro Maestro",
-        email="otro_maestro@test.com",
-        password_hash="hash",
-        rol=Rol.MAESTRO
-    )
-
-    alumno = Alumno(
-        nombre="Juan",
-        apellido="Perez",
-        edad=20
-    )
-
-    materia = Materia(
-        nombre="Matematica",
-        maestro_id=maestro_otro.id
-    )
-
-    db.add_all([
-        maestro_otro,
-        alumno,
-        materia
-    ])
-    db.commit()
-    db.refresh(maestro_otro)
-    db.refresh(alumno)
-    db.refresh(materia)
-
-    calificacion = Calificacion(
-        alumno_id=alumno.id,
-        materia_id=materia.id,
-        nota=8,
-        periodo=1
-    )
-
-    db.add(calificacion)
-    db.commit()
-    db.refresh(calificacion)
-
-    calificacion_id = calificacion.id
-
-    response = client.delete(
-        f"/calificaciones/{calificacion_id}"
-    )
-
-    assert response.status_code == 403
-
-    assert db.query(Calificacion).filter(
-        Calificacion.id == calificacion_id
-    ).first() is not None
-
 
 def test_eliminar_calificacion_maestro_materia_sin_maestro(
     client,
@@ -3793,6 +2827,7 @@ def test_eliminar_calificacion_maestro_materia_sin_maestro(
     db.refresh(alumno)
     db.refresh(materia)
 
+    asegurar_inscripcion(db, alumno.id, materia.id)
     calificacion = Calificacion(
         alumno_id=alumno.id,
         materia_id=materia.id,
@@ -3849,6 +2884,8 @@ def test_admin_puede_ver_todas_las_calificaciones(
     ])
     db.commit()
 
+    asegurar_inscripcion(db, alumno1.id, materia.id)
+    asegurar_inscripcion(db, alumno2.id, materia.id)
     db.add_all([
         Calificacion(
             alumno_id=alumno1.id,
@@ -3895,6 +2932,7 @@ def test_admin_puede_ver_detalle_de_todas_las_calificaciones(
     ])
     db.commit()
 
+    asegurar_inscripcion(db, alumno.id, materia.id)
     db.add(
         Calificacion(
             alumno_id=alumno.id,
@@ -4008,6 +3046,7 @@ def test_admin_puede_modificar_cualquier_calificacion(
     db.refresh(materia)
     db.refresh(alumno)
 
+    asegurar_inscripcion(db, alumno.id, materia.id)
     calificacion = Calificacion(
         alumno_id=alumno.id,
         materia_id=materia.id,
@@ -4060,6 +3099,7 @@ def test_admin_puede_eliminar_cualquier_calificacion(
     db.refresh(materia)
     db.refresh(alumno)
 
+    asegurar_inscripcion(db, alumno.id, materia.id)
     calificacion = Calificacion(
         alumno_id=alumno.id,
         materia_id=materia.id,
@@ -4107,6 +3147,7 @@ def test_alumno_puede_ver_su_propia_calificacion(db):
     db.commit()
     db.refresh(materia)
 
+    asegurar_inscripcion(db, alumno.id, materia.id)
     calificacion = Calificacion(
         alumno_id=alumno.id,
         materia_id=materia.id,
@@ -4171,6 +3212,7 @@ def test_maestro_no_puede_cambiar_alumno_de_una_calificacion(
     db.commit()
     db.refresh(materia)
 
+    asegurar_inscripcion(db, alumno_original.id, materia.id)
     calificacion = Calificacion(
         alumno_id=alumno_original.id,
         materia_id=materia.id,

@@ -7,7 +7,6 @@ from models.calificacion import Calificacion
 from schemas.roles import Rol
 
 
-
 def test_crear_materia(client, usuario_admin):
     response = client.post(
         "/materias/",
@@ -270,8 +269,6 @@ def test_crear_materia_con_permiso(client, usuario_admin):
     )
 
     assert response.status_code == 201
-
-
 
 
 def test_actualizar_materia_sin_permiso(client, db, usuario_maestro):

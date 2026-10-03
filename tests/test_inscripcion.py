@@ -1,8 +1,6 @@
 from models.alumno import Alumno
 from models.materia import Materia
 from models.inscripcion import Inscripcion
-from models.calificacion import Calificacion
-from tests.conftest import client, db
 
 
 def test_crear_inscripcion(client):
@@ -351,3 +349,12 @@ def test_eliminar_inscripcion_sin_permiso_alumno(
     )
 
     assert response.status_code == 403
+
+
+
+def test_eliminar_inscripcion_inexistente(client):
+    response = client.delete(
+        "/inscripciones/999999"
+    )
+
+    assert response.status_code == 404

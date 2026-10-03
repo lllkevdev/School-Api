@@ -39,6 +39,16 @@ ERRORES_HTTP = {
         "El alumno ya esta inscripto en la materia"
     ),
 
+    "materia_conflicto": (
+        409,
+        "Ya existe una materia con ese nombre"
+    ),
+
+    "inscripcion_inexistente": (
+        404,
+        "La inscripcion no existe"
+    ),
+
     "maestro": (
         403,
         "No tiene permiso para modificar esta calificacion"
@@ -52,6 +62,11 @@ ERRORES_HTTP = {
     "tiene_calificaciones": (
     409,
     "No se puede eliminar la materia porque tiene calificaciones asociadas"
+    ),
+
+    "tiene_calificaciones_alumno": (
+        409,
+        "No se puede eliminar el alumno porque tiene calificaciones asociadas"
     ),
 
     "sin_cambios": (

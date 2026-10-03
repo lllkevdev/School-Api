@@ -1,6 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
 
 from database.dependencies import get_db
 
@@ -37,30 +36,18 @@ router = APIRouter(
     status_code=status.HTTP_201_CREATED
 )
 def crear(
-    materia: Materia, 
+    materia: Materia,
     db: Session = Depends(get_db),
     _ = Depends(requiere_permiso(Permiso.CREAR_MATERIA))
 ):
-    try:
-        return crear_materia(db, materia)
+    materia_creada, error = crear_materia(
+        db,
+        materia
+    )
 
-    except IntegrityError:
-        raise HTTPException(
-            status_code=409,
-            detail="Ya existe una materia con ese nombre"
-        )
+    error_to_http(error)
 
-
-@router.get(
-    "/",
-    response_model=list[MateriaRespuesta]
-)
-def obtener(
-    db: Session = Depends(get_db),
-    _ = Depends(requiere_permiso(Permiso.VER_MATERIAS))
-):
-    return obtener_materias(db)
-
+    return materia_creada
 
 
 @router.get(
@@ -79,29 +66,31 @@ def obtener_por_id(
     return materia
 
 
-
-
 @router.put(
     "/{materia_id}",
     response_model=MateriaRespuesta
 )
 def actualizar_materia_put(
-    materia_id: int, 
-    materia: Materia, db: Session = Depends(get_db),
+    materia_id: int,
+    materia: Materia,
+    db: Session = Depends(get_db),
     _ = Depends(requiere_permiso(Permiso.MODIFICAR_MATERIA))
 ):
-    try:
-        materia_actualizada = actualizar_materia(db, materia_id, materia)
+    materia_actualizada, error = actualizar_materia(
+        db,
+        materia_id,
+        materia
+    )
 
-        if not materia_actualizada:
-            raise HTTPException(status_code=404, detail="Materia no encontrada")
-        return materia_actualizada
-    except IntegrityError:
-        raise HTTPException(
-            status_code=409,
-            detail="Ya existe una materia con ese nombre"
-        )
+    error_to_http(error)
 
+    return materia_actualizada
+
+
+@router.patch(
+    "/{materia_id}",
+    response_model=MateriaRespuesta
+)
 
 
 @router.patch(
@@ -109,29 +98,20 @@ def actualizar_materia_put(
     response_model=MateriaRespuesta
 )
 def actualizar_materia_patch(
-    materia_id: int, 
-    materia: MateriaActualizarSchema, 
+    materia_id: int,
+    materia: MateriaActualizarSchema,
     db: Session = Depends(get_db),
     _ = Depends(requiere_permiso(Permiso.MODIFICAR_MATERIA))
 ):
-    try:
-        materia_actualizada, error = actualizar_materia_parcialmente(
-            db, 
-            materia_id, 
-            materia
-        )
+    materia_actualizada, error = actualizar_materia_parcialmente(
+        db,
+        materia_id,
+        materia
+    )
 
-        error_to_http(error)
-        
-        return materia_actualizada
-    
-    except IntegrityError:
-        raise HTTPException(
-            status_code=409,
-            detail="Ya existe una materia con ese nombre"
-        )
+    error_to_http(error)
 
-
+    return materia_actualizada
 
 
 @router.delete(

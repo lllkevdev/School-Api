@@ -53,7 +53,7 @@ def eliminar_inscripcion(
     ).first()
 
     if inscripcion is None:
-        return False, "inscripcion"
+        return False, "inscripcion_inexistente"
 
     db.delete(inscripcion)
     db.commit()
