@@ -1,6 +1,6 @@
 from services.usuario_service import crear_usuario, buscar_usuario_por_email
 from schemas.usuario import UsuarioCrear
-from security.password import verify_password
+from core.security import verify_password
 
 from models.alumno import Alumno
 from models.usuario import Usuario
@@ -107,10 +107,6 @@ def test_usuario_puede_asociarse_a_un_alumno(db):
 
     assert usuario.alumno_id == alumno.id
     assert usuario.alumno.id == alumno.id
-
-
-
-
 
 
 def test_alumno_puede_ver_su_calificacion(client, db):

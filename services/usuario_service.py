@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from models.usuario import Usuario
 from schemas.usuario import UsuarioCrear
-from security.password import hash_password
+from core.security import hash_password
 
 from sqlalchemy.exc import IntegrityError
 
