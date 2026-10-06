@@ -15,33 +15,52 @@ main.app.dependency_overrides[get_db] = override_get_db
 client = TestClient(main.app)
 
 
-def test_obtener_alumnos():
-    response = client.get("/alumnos/")
-    
-    assert response.status_code == 200
-
-
-def test_maestro_puede_obtener_alumnos(client, usuario_maestro):
-    response = client.get("/alumnos/")
+def test_obtener_alumnos(client, auth_headers_admin):
+    response = client.get(
+        "/alumnos/",
+        headers=auth_headers_admin
+    )
 
     assert response.status_code == 200
 
 
-def test_alumno_no_puede_obtener_todos_los_alumnos(client, usuario_alumno):
-    response = client.get("/alumnos/")
+def test_maestro_puede_obtener_alumnos(
+    client,
+    auth_headers_maestro
+):
+    response = client.get(
+        "/alumnos/",
+        headers=auth_headers_maestro
+    )
+
+    assert response.status_code == 200
+
+
+def test_alumno_no_puede_obtener_todos_los_alumnos(
+    client,
+    auth_headers_alumno
+):
+    response = client.get(
+        "/alumnos/",
+        headers=auth_headers_alumno
+    )
 
     assert response.status_code == 403
     assert response.json()["detail"] == "No tiene permiso para realizar esta acción"
 
 
-def test_no_eliminar_alumno_con_calificaciones(client, usuario_admin):
+def test_no_eliminar_alumno_con_calificaciones(
+    client,
+    auth_headers_admin
+):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        },
+        headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
@@ -50,7 +69,8 @@ def test_no_eliminar_alumno_con_calificaciones(client, usuario_admin):
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        },
+        headers=auth_headers_admin
     )
 
     materia_id = response.json()["id"]
@@ -60,7 +80,8 @@ def test_no_eliminar_alumno_con_calificaciones(client, usuario_admin):
         json={
             "alumno_id": alumno_id,
             "materia_id": materia_id,
-        }
+        },
+        headers=auth_headers_admin
     )
 
     assert response.status_code == 201
@@ -72,10 +93,16 @@ def test_no_eliminar_alumno_con_calificaciones(client, usuario_admin):
             "materia_id": materia_id,
             "nota": 8.5,
             "periodo": 2,
-        }
+        },
+        headers=auth_headers_admin
     )
 
-    response = client.delete(f"/alumnos/{alumno_id}")
+    assert response.status_code == 201
+
+    response = client.delete(
+        f"/alumnos/{alumno_id}",
+        headers=auth_headers_admin
+    )
 
     assert response.status_code == 409
     assert response.json() == {
@@ -83,17 +110,16 @@ def test_no_eliminar_alumno_con_calificaciones(client, usuario_admin):
     }
 
 
-def test_crear_alumno(client):
+def test_crear_alumno(client, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        },
+        headers=auth_headers_admin
     )
-
-    print(response.json())
 
     assert response.status_code == 201
     assert response.json()["nombre"] == "Juan"
@@ -101,19 +127,26 @@ def test_crear_alumno(client):
     assert response.json()["edad"] == 20
 
 
-def test_obtener_alumno_por_id(client, usuario_admin):
+def test_obtener_alumno_por_id(
+    client,
+    auth_headers_admin
+):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        },
+        headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
 
-    response = client.get(f"/alumnos/{alumno_id}")
+    response = client.get(
+        f"/alumnos/{alumno_id}",
+        headers=auth_headers_admin
+    )
 
     assert response.status_code == 200
     assert response.json()["id"] == alumno_id
@@ -122,14 +155,26 @@ def test_obtener_alumno_por_id(client, usuario_admin):
     assert response.json()["edad"] == 20
 
 
-def test_obtener_alumno_no_existente(client):
-    response = client.get("/alumnos/999")
+def test_obtener_alumno_no_existente(
+    client,
+    auth_headers_admin
+):
+    response = client.get(
+        "/alumnos/999",
+        headers=auth_headers_admin
+    )
 
     assert response.status_code == 404
-    assert response.json() == {"detail": "Alumno no encontrado"}
+    assert response.json() == {
+        "detail": "Alumno no encontrado"
+    }
 
 
-def test_maestro_puede_obtener_alumno_por_id(client, db, usuario_maestro):
+def test_maestro_puede_obtener_alumno_por_id(
+    client,
+    db,
+    auth_headers_maestro
+):
     alumno = Alumno(
         nombre="Juan",
         apellido="Perez",
@@ -140,14 +185,21 @@ def test_maestro_puede_obtener_alumno_por_id(client, db, usuario_maestro):
     db.commit()
     db.refresh(alumno)
 
-    response = client.get(f"/alumnos/{alumno.id}")
+    response = client.get(
+        f"/alumnos/{alumno.id}",
+        headers=auth_headers_maestro
+    )
 
     assert response.status_code == 200
     assert response.json()["id"] == alumno.id
     assert response.json()["nombre"] == "Juan"
 
 
-def test_alumno_no_puede_obtener_otro_alumno(client, db, usuario_alumno):
+def test_alumno_no_puede_obtener_otro_alumno(
+    client,
+    db,
+    auth_headers_alumno
+):
     otro_alumno = Alumno(
         nombre="Pedro",
         apellido="Gómez",
@@ -158,67 +210,84 @@ def test_alumno_no_puede_obtener_otro_alumno(client, db, usuario_alumno):
     db.commit()
     db.refresh(otro_alumno)
 
-    response = client.get(f"/alumnos/{otro_alumno.id}")
+    response = client.get(
+        f"/alumnos/{otro_alumno.id}",
+        headers=auth_headers_alumno
+    )
 
     assert response.status_code == 403
     assert response.json()["detail"] == "No tiene permiso para realizar esta acción"
 
 
-def test_eliminar_alumno_sin_calificaciones(client, usuario_admin):
+def test_eliminar_alumno_sin_calificaciones(
+    client,
+    auth_headers_admin
+):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        },
+        headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
 
-    response = client.delete(f"/alumnos/{alumno_id}")
+    response = client.delete(
+        f"/alumnos/{alumno_id}",
+        headers=auth_headers_admin
+    )
 
     assert response.status_code == 204
 
-    response = client.get(f"/alumnos/{alumno_id}")
+    response = client.get(
+        f"/alumnos/{alumno_id}",
+        headers=auth_headers_admin
+    )
+
     assert response.status_code == 404
 
 
-def test_crear_alumno_sin_edad(client):
+def test_crear_alumno_sin_edad(client, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
-        }
+        },
+        headers=auth_headers_admin
     )
 
     assert response.status_code == 422
     assert "edad" in str(response.json())
 
 
-def test_crear_alumno_con_edad_invalida(client):
+def test_crear_alumno_con_edad_invalida(client, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 0,
-        }
+        },
+        headers=auth_headers_admin
     )
 
     assert response.status_code == 422
     assert "edad" in str(response.json())
 
 
-def test_actualizar_alumno(client, usuario_admin):
+def test_actualizar_alumno(client, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        },
+        headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
@@ -229,7 +298,8 @@ def test_actualizar_alumno(client, usuario_admin):
             "nombre": "Juan Carlos",
             "apellido": "Pérez Gómez",
             "edad": 21,
-        }
+        },
+        headers=auth_headers_admin
     )
 
     assert response.status_code == 200
@@ -238,14 +308,15 @@ def test_actualizar_alumno(client, usuario_admin):
     assert response.json()["edad"] == 21
 
 
-def test_actualizar_alumno_parcialmente(client, usuario_admin):
+def test_actualizar_alumno_parcialmente(client, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        },
+        headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
@@ -254,7 +325,8 @@ def test_actualizar_alumno_parcialmente(client, usuario_admin):
         f"/alumnos/{alumno_id}",
         json={
             "nombre": "Juan Carlos",
-        }
+        },
+        headers=auth_headers_admin
     )
 
     assert response.status_code == 200
@@ -263,228 +335,231 @@ def test_actualizar_alumno_parcialmente(client, usuario_admin):
     assert response.json()["edad"] == 20
 
 
-def test_actualizar_parcialmente_alumno_no_existente(client, usuario_admin):
+def test_actualizar_parcialmente_alumno_no_existente(
+    client,
+    auth_headers_admin
+):
     response = client.patch(
         "/alumnos/999",
         json={
             "nombre": "Juan Carlos",
-        }
+        },
+        headers=auth_headers_admin
     )
 
     assert response.status_code == 404
-    assert response.json() == {"detail": "Alumno no encontrado"}
+    assert response.json() == {
+        "detail": "Alumno no encontrado"
+    }
 
 
-def test_actualizar_alumno_no_existente(client, usuario_admin):
+def test_actualizar_alumno_no_existente(
+    client,
+    auth_headers_admin
+):
     response = client.put(
         "/alumnos/999",
         json={
             "nombre": "Juan Carlos",
-            "apellido": "Pérez Gómez",
+            "apellido": "Pérez",
             "edad": 21,
-        }
+        },
+        headers=auth_headers_admin
     )
 
     assert response.status_code == 404
-    assert response.json() == {"detail": "Alumno no encontrado"}
+    assert response.json() == {
+        "detail": "Alumno no encontrado"
+    }
 
 
-def test_crear_alumno_sin_permiso(client, usuario_maestro):
+def test_crear_alumno_sin_permiso(client, auth_headers_maestro):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        },
+        headers=auth_headers_maestro
     )
 
     assert response.status_code == 403
     assert response.json()["detail"] == "No tiene permiso para realizar esta acción"
 
 
-def test_alumno_no_puede_crear_alumno(client, usuario_alumno):
+def test_alumno_no_puede_crear_alumno(client, auth_headers_alumno):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        },
+        headers=auth_headers_alumno
     )
 
     assert response.status_code == 403
     assert response.json()["detail"] == "No tiene permiso para realizar esta acción"
 
 
-def test_alumno_no_puede_actualizar_alumno(client, db, usuario_alumno):
-    alumno = Alumno(
-        nombre="Juan",
-        apellido="Perez",
-        edad=20
-    )
-
-    db.add(alumno)
-    db.commit()
-    db.refresh(alumno)
-
-    response = client.put(
-        f"/alumnos/{alumno.id}",
-        json={
-            "nombre": "Juan Carlos",
-            "apellido": "Pérez Gómez",
-            "edad": 21,
-        }
-    )
-
-    assert response.status_code == 403
-    assert response.json()["detail"] == "No tiene permiso para realizar esta acción"
-
-
-def test_alumno_no_puede_modificar_alumno(client, db, usuario_alumno):
-    alumno = Alumno(
-        nombre="Juan",
-        apellido="Perez",
-        edad=20
-    )
-
-    db.add(alumno)
-    db.commit()
-    db.refresh(alumno)
-
-    response = client.patch(
-        f"/alumnos/{alumno.id}",
-        json={
-            "nombre": "Juan Carlos",
-        }
-    )
-
-    assert response.status_code == 403
-    assert response.json()["detail"] == "No tiene permiso para realizar esta acción"
-
-
-def test_alumno_no_puede_eliminar_alumno(client, db, usuario_alumno):
-    alumno = Alumno(
-        nombre="Juan",
-        apellido="Perez",
-        edad=20
-    )
-
-    db.add(alumno)
-    db.commit()
-    db.refresh(alumno)
-
-    response = client.delete(
-        f"/alumnos/{alumno.id}"
-    )
-
-    assert response.status_code == 403
-    assert response.json()["detail"] == "No tiene permiso para realizar esta acción"
-
-
-def test_actualizar_alumno_sin_permiso(client, db, usuario_maestro):
-    alumno = Alumno(
-        nombre="Juan",
-        apellido="Perez",
-        edad=20
-    )
-
-    db.add(alumno)
-    db.commit()
-    db.refresh(alumno)
-
-    response = client.put(
-        f"/alumnos/{alumno.id}",
-        json={
-            "nombre": "Juan Carlos",
-            "apellido": "Pérez Gómez",
-            "edad": 21,
-        }
-    )
-
-    assert response.status_code == 403
-
-
-def test_modificar_alumno_sin_permiso(client, db, usuario_maestro):
-    alumno = Alumno(
-        nombre="Juan",
-        apellido="Perez",
-        edad=20
-    )
-
-    db.add(alumno)
-    db.commit()
-    db.refresh(alumno)
-
-    response = client.patch(
-        f"/alumnos/{alumno.id}",
-        json={
-            "nombre": "Juan Carlos",
-            "apellido": "Pérez Gómez",
-            "edad": 21,
-        }
-    )
-
-    assert response.status_code == 403
-    assert response.json()["detail"] == "No tiene permiso para realizar esta acción"
-
-
-def test_eliminar_alumno_sin_permiso(client, db, usuario_maestro):
-    alumno = Alumno(
-        nombre="Juan",
-        apellido="Perez",
-        edad=20
-    )
-
-    db.add(alumno)
-    db.commit()
-    db.refresh(alumno)
-
-    response = client.delete(
-        f"/alumnos/{alumno.id}"
-    )
-
-    assert response.status_code == 403
-    assert response.json()["detail"] == "No tiene permiso para realizar esta acción"
-
-
-def test_eliminar_alumno_con_inscripcion_sin_calificacion(client, db):
-    alumno = Alumno(
-        nombre="Juan",
-        apellido="Perez",
-        edad=20,
-    )
-
-    materia = Materia(
-        nombre="Matematica",
-    )
-
-    db.add_all([alumno, materia])
-    db.commit()
-
-    inscripcion = Inscripcion(
-        alumno_id=alumno.id,
-        materia_id=materia.id,
-    )
-
-    db.add(inscripcion)
-    db.commit()
-
-    response = client.delete(f"/alumnos/{alumno.id}")
-
-    assert response.status_code == 204
-
-    inscripcion_existente = db.query(Inscripcion).filter(
-        Inscripcion.alumno_id == alumno.id
-    ).first()
-
-    assert inscripcion_existente is None
-
-
-def test_eliminar_alumno_con_calificaciones_forzado(
+def test_alumno_no_puede_actualizar_alumno(
     client,
     db,
-    usuario_admin
+    auth_headers_alumno
+):
+    alumno = Alumno(
+        nombre="Juan",
+        apellido="Perez",
+        edad=20
+    )
+    db.add(alumno)
+    db.commit()
+    db.refresh(alumno)
+
+    response = client.put(
+        f"/alumnos/{alumno.id}",
+        json={
+            "nombre": "Juan Carlos",
+            "apellido": "Perez",
+            "edad": 21,
+        },
+        headers=auth_headers_alumno
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "No tiene permiso para realizar esta acción"
+
+
+def test_alumno_no_puede_modificar_alumno(
+    client,
+    db,
+    auth_headers_alumno
+):
+    alumno = Alumno(
+        nombre="Juan",
+        apellido="Perez",
+        edad=20
+    )
+    db.add(alumno)
+    db.commit()
+    db.refresh(alumno)
+
+    response = client.patch(
+        f"/alumnos/{alumno.id}",
+        json={
+            "nombre": "Juan Carlos",
+        },
+        headers=auth_headers_alumno
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "No tiene permiso para realizar esta acción"
+
+
+def test_alumno_no_puede_eliminar_alumno(
+    client,
+    db,
+    auth_headers_alumno
+):
+    alumno = Alumno(
+        nombre="Juan",
+        apellido="Perez",
+        edad=20
+    )
+    db.add(alumno)
+    db.commit()
+    db.refresh(alumno)
+
+    response = client.delete(
+        f"/alumnos/{alumno.id}",
+        headers=auth_headers_alumno
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "No tiene permiso para realizar esta acción"
+
+
+def test_actualizar_alumno_sin_permiso(
+    client,
+    db,
+    auth_headers_maestro
+):
+    alumno = Alumno(
+        nombre="Juan",
+        apellido="Perez",
+        edad=20
+    )
+    db.add(alumno)
+    db.commit()
+    db.refresh(alumno)
+
+    response = client.put(
+        f"/alumnos/{alumno.id}",
+        json={
+            "nombre": "Pedro",
+            "apellido": "Gomez",
+            "edad": 21,
+        },
+        headers=auth_headers_maestro
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "No tiene permiso para realizar esta acción"
+
+
+def test_modificar_alumno_sin_permiso(
+    client,
+    db,
+    auth_headers_maestro
+):
+    alumno = Alumno(
+        nombre="Juan",
+        apellido="Perez",
+        edad=20
+    )
+    db.add(alumno)
+    db.commit()
+    db.refresh(alumno)
+
+    response = client.patch(
+        f"/alumnos/{alumno.id}",
+        json={
+            "nombre": "Pedro",
+        },
+        headers=auth_headers_maestro
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "No tiene permiso para realizar esta acción"
+
+
+def test_eliminar_alumno_sin_permiso(
+    client,
+    db,
+    auth_headers_maestro
+):
+    alumno = Alumno(
+        nombre="Juan",
+        apellido="Perez",
+        edad=20
+    )
+    db.add(alumno)
+    db.commit()
+    db.refresh(alumno)
+
+    response = client.delete(
+        f"/alumnos/{alumno.id}",
+        headers=auth_headers_maestro
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "No tiene permiso para realizar esta acción"
+
+
+def test_eliminar_alumno_con_inscripcion_sin_calificacion(
+    client,
+    auth_headers_admin
 ):
     response = client.post(
         "/alumnos/",
@@ -492,17 +567,21 @@ def test_eliminar_alumno_con_calificaciones_forzado(
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        },
+        headers=auth_headers_admin
     )
+    assert response.status_code == 201
 
     alumno_id = response.json()["id"]
 
     response = client.post(
         "/materias/",
         json={
-            "nombre": "Matemáticas",
-        }
+            "nombre": "Matemáticas"
+        },
+        headers=auth_headers_admin
     )
+    assert response.status_code == 201
 
     materia_id = response.json()["id"]
 
@@ -511,9 +590,55 @@ def test_eliminar_alumno_con_calificaciones_forzado(
         json={
             "alumno_id": alumno_id,
             "materia_id": materia_id,
-        }
+        },
+        headers=auth_headers_admin
+    )
+    assert response.status_code == 201
+
+    response = client.delete(
+        f"/alumnos/{alumno_id}",
+        headers=auth_headers_admin
     )
 
+    assert response.status_code == 204
+
+
+def test_eliminar_alumno_con_calificaciones_forzado(
+    client,
+    auth_headers_admin
+):
+    response = client.post(
+        "/alumnos/",
+        json={
+            "nombre": "Juan",
+            "apellido": "Pérez",
+            "edad": 20,
+        },
+        headers=auth_headers_admin
+    )
+    assert response.status_code == 201
+
+    alumno_id = response.json()["id"]
+
+    response = client.post(
+        "/materias/",
+        json={
+            "nombre": "Matemáticas"
+        },
+        headers=auth_headers_admin
+    )
+    assert response.status_code == 201
+
+    materia_id = response.json()["id"]
+
+    response = client.post(
+        "/inscripciones/",
+        json={
+            "alumno_id": alumno_id,
+            "materia_id": materia_id,
+        },
+        headers=auth_headers_admin
+    )
     assert response.status_code == 201
 
     response = client.post(
@@ -521,25 +646,19 @@ def test_eliminar_alumno_con_calificaciones_forzado(
         json={
             "alumno_id": alumno_id,
             "materia_id": materia_id,
-            "nota": 8,
+            "nota": 8.5,
             "periodo": 1,
-        }
+        },
+        headers=auth_headers_admin
     )
-
     assert response.status_code == 201
 
     response = client.delete(
-        f"/alumnos/{alumno_id}?forzar=true"
+        f"/alumnos/{alumno_id}",
+        headers=auth_headers_admin
     )
 
-    inscripcion_existente = db.query(Inscripcion).filter(
-        Inscripcion.alumno_id == alumno_id
-    ).first()
-
-    assert inscripcion_existente is None
-
-    assert response.status_code == 204
-
-    response = client.get(f"/alumnos/{alumno_id}")
-
-    assert response.status_code == 404
+    assert response.status_code == 409
+    assert response.json() == {
+        "detail": "No se puede eliminar el alumno porque tiene calificaciones asociadas"
+    }

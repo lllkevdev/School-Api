@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Path, Query, status
 from sqlalchemy.orm import Session
 
 from database.dependencies import get_db
+from models.usuario import Usuario
 
 from schemas.calificacion import (
     Calificacion,
@@ -83,7 +84,7 @@ def obtener_por_id(
     calificacion_id: int,
     db: Session = Depends(get_db),
     _ = Depends(requiere_permiso_calificaciones),
-    usuario: dict = Depends(get_usuario_actual)
+    usuario: Usuario = Depends(get_usuario_actual)
 ):
     calificacion, error = buscar_calificaciones(
         db,
@@ -109,16 +110,16 @@ def obtener_por_id(
 def obtener_mis_calificaciones(
     db: Session = Depends(get_db),
     _ = Depends(requiere_permiso(Permiso.VER_MIS_CALIFICACIONES)),
-    usuario: dict = Depends(get_usuario_actual)
+    usuario: Usuario = Depends(get_usuario_actual)
 ):
+    assert usuario.alumno_id is not None
+
     calificaciones, error = obtener_calificaciones_alumno(
         db,
-        usuario["alumno_id"],
+        usuario.alumno_id,
         usuario
     )
-
     error_to_http(error)
-
     return calificaciones
 
 
@@ -129,11 +130,13 @@ def obtener_mis_calificaciones(
 def obtener_mi_promedio(
     db: Session = Depends(get_db),
     _ = Depends(requiere_permiso(Permiso.VER_MIS_CALIFICACIONES)),
-    usuario: dict = Depends(get_usuario_actual)
+    usuario: Usuario = Depends(get_usuario_actual)
 ):
+    assert usuario.alumno_id is not None
+    
     resultado, error = obtener_promedio_alumno(
         db,
-        usuario["alumno_id"],
+        usuario.alumno_id,
         usuario
     )
 
@@ -149,11 +152,13 @@ def obtener_mi_promedio(
 def obtener_mis_estadisticas(
     db: Session = Depends(get_db),
     _ = Depends(requiere_permiso(Permiso.VER_MIS_CALIFICACIONES)),
-    usuario: dict = Depends(get_usuario_actual)
+    usuario: Usuario = Depends(get_usuario_actual)
 ):
+    assert usuario.alumno_id is not None
+
     resultado, error = obtener_estadisticas_alumno(
         db,
-        usuario["alumno_id"],
+        usuario.alumno_id,
         usuario
     )
 
@@ -175,14 +180,12 @@ def obtener_mis_estadisticas(
 )
 def obtener_mis_calificaciones_maestro(
     db: Session = Depends(get_db),
-    _ = Depends(
-        requiere_permiso(Permiso.VER_CALIFICACIONES_MAESTRO)
-    ),
-    usuario: dict = Depends(get_usuario_actual)
+    _ = Depends(requiere_permiso(Permiso.VER_CALIFICACIONES_MAESTRO)),
+    usuario: Usuario = Depends(get_usuario_actual)
 ):
     calificaciones = obtener_calificaciones_maestro(
         db,
-        usuario["id"]
+        usuario.id
     )
 
     return calificaciones
@@ -204,7 +207,7 @@ def obtener_calificaciones_alumnos(
     ),
     db: Session = Depends(get_db),
     _ = Depends(requiere_permiso_calificaciones),
-    usuario: dict = Depends(get_usuario_actual)
+    usuario: Usuario = Depends(get_usuario_actual)
 ):
     calificaciones, error = obtener_calificaciones_alumno(
         db,
@@ -226,7 +229,7 @@ def obtener_estadisticas(
     alumno_id: int = Path(gt=0),
     db: Session = Depends(get_db),
     _ = Depends(requiere_permiso_calificaciones),
-    usuario: dict = Depends(get_usuario_actual)
+    usuario: Usuario = Depends(get_usuario_actual)
 ):
     resultado, error = obtener_estadisticas_alumno(
         db,
@@ -253,7 +256,7 @@ def crear(
     calificacion: Calificacion,
     db: Session = Depends(get_db),
     _ = Depends(requiere_permiso(Permiso.CREAR_CALIFICACION)),
-    usuario: dict = Depends(get_usuario_actual)
+    usuario: Usuario = Depends(get_usuario_actual)
 ):
     resultado, error = crear_calificacion(
         db,
@@ -275,7 +278,7 @@ def actualizar(
     datos: CalificacionActualizar,
     db: Session = Depends(get_db),
     _ = Depends(requiere_permiso(Permiso.MODIFICAR_CALIFICACION)),
-    usuario: dict = Depends(get_usuario_actual)
+    usuario: Usuario = Depends(get_usuario_actual)
 ):
     calificacion, error = actualizar_calificacion(
         db,
@@ -297,7 +300,7 @@ def eliminar(
     calificacion_id: int,
     db: Session = Depends(get_db),
     _ = Depends(requiere_permiso(Permiso.ELIMINAR_CALIFICACION)),
-    usuario: dict = Depends(get_usuario_actual)
+    usuario: Usuario = Depends(get_usuario_actual)
 ):
     calificacion, error = eliminar_calificacion(
         db,

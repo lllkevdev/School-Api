@@ -7,31 +7,36 @@ from models.calificacion import Calificacion
 from schemas.roles import Rol
 
 
-def test_crear_materia(client, usuario_admin):
+def test_crear_materia(client, auth_headers_admin):
     response = client.post(
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        },
+        headers=auth_headers_admin
     )
 
     assert response.status_code == 201
     assert response.json()["nombre"] == "Matemáticas"
 
 
-def test_obtener_materia_no_existente(client):
-    response = client.get("/materias/999")
+def test_obtener_materia_no_existente(client, auth_headers_admin):
+    response = client.get(
+        "/materias/999",
+        headers=auth_headers_admin
+    )
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Materia no encontrada"}
 
 
-def test_actualizar_materia(client, usuario_admin):
+def test_actualizar_materia(client, auth_headers_admin):
     response = client.post(
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        },
+        headers=auth_headers_admin
     )
 
     materia_id = response.json()["id"]
@@ -40,7 +45,8 @@ def test_actualizar_materia(client, usuario_admin):
         f"/materias/{materia_id}",
         json={
             "nombre": "Física",
-        }
+        },
+        headers=auth_headers_admin
     )
 
     assert response.status_code == 200
@@ -48,16 +54,14 @@ def test_actualizar_materia(client, usuario_admin):
     assert response.json()["nombre"] == "Física"
 
 
-def test_actualizar_materia_parcialmente(client, usuario_admin):
+def test_actualizar_materia_parcialmente(client, auth_headers_admin):
     response = client.post(
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        },
+        headers=auth_headers_admin
     )
-
-    print(response.status_code)
-    print(response.json())
 
     materia_id = response.json()["id"]
 
@@ -65,7 +69,8 @@ def test_actualizar_materia_parcialmente(client, usuario_admin):
         f"/materias/{materia_id}",
         json={
             "nombre": "Física",
-        }
+        },
+        headers=auth_headers_admin
     )
 
     assert response.status_code == 200
@@ -73,54 +78,67 @@ def test_actualizar_materia_parcialmente(client, usuario_admin):
     assert response.json()["nombre"] == "Física"
 
 
-def test_eliminar_materia(client, usuario_admin):
+def test_eliminar_materia(client, auth_headers_admin):
     response = client.post(
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        },
+        headers=auth_headers_admin
     )
 
     materia_id = response.json()["id"]
 
-    response = client.delete(f"/materias/{materia_id}")
+    response = client.delete(
+        f"/materias/{materia_id}",
+        headers=auth_headers_admin
+    )
 
     assert response.status_code == 204
 
-    response = client.get(f"/materias/{materia_id}")
+    response = client.get(
+        f"/materias/{materia_id}",
+        headers=auth_headers_admin
+    )
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Materia no encontrada"}
 
 
-def test_crear_materia_sin_nombre(client, usuario_admin):
+def test_crear_materia_sin_nombre(client, auth_headers_admin):
     response = client.post(
         "/materias/",
-        json={}
+        json={},
+        headers=auth_headers_admin
     )
 
     assert response.status_code == 422
     assert "nombre" in str(response.json())
 
 
-def test_crear_materia_nombre_demasiado_corto(client, usuario_admin):
+def test_crear_materia_nombre_demasiado_corto(
+    client,
+    auth_headers_admin
+):
     response = client.post(
         "/materias/",
         json={
             "nombre": "A",
-        }
+        },
+        headers=auth_headers_admin
     )
 
     assert response.status_code == 422
     assert "nombre" in str(response.json())
 
 
-def test_crear_materia_duplicada(client, usuario_admin):
+def test_crear_materia_duplicada(client, auth_headers_admin):
     response = client.post(
         "/materias/",
         json={
             "nombre": "Matemáticas"
-        }
+        },
+        headers=auth_headers_admin
     )
 
     assert response.status_code == 201
@@ -129,7 +147,8 @@ def test_crear_materia_duplicada(client, usuario_admin):
         "/materias/",
         json={
             "nombre": "Matemáticas"
-        }
+        },
+        headers=auth_headers_admin
     )
 
     assert response.status_code == 409
@@ -138,20 +157,30 @@ def test_crear_materia_duplicada(client, usuario_admin):
     }
 
 
-def test_actualizar_materia_parcialmente_no_existente(client, usuario_admin):
+def test_actualizar_materia_parcialmente_no_existente(
+    client,
+    auth_headers_admin
+):
     response = client.patch(
         "/materias/999",
         json={
             "nombre": "Física",
-        }
+        },
+        headers=auth_headers_admin
     )
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Materia no encontrada"}
 
 
-def test_eliminar_materia_no_existente(client, usuario_admin):
-    response = client.delete("/materias/999")
+def test_eliminar_materia_no_existente(
+    client,
+    auth_headers_admin
+):
+    response = client.delete(
+        "/materias/999",
+        headers=auth_headers_admin
+    )
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Materia no encontrada"}
@@ -159,20 +188,22 @@ def test_eliminar_materia_no_existente(client, usuario_admin):
 
 def test_no_se_puede_actualizar_materia_con_nombre_duplicado(
     client,
-    usuario_admin
+    auth_headers_admin
 ):
     response = client.post(
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        },
+        headers=auth_headers_admin
     )
 
     response = client.post(
         "/materias/",
         json={
             "nombre": "Historia",
-        }
+        },
+        headers=auth_headers_admin
     )
 
     materia_id = response.json()["id"]
@@ -181,7 +212,8 @@ def test_no_se_puede_actualizar_materia_con_nombre_duplicado(
         f"/materias/{materia_id}",
         json={
             "nombre": "Matemáticas"
-        }
+        },
+        headers=auth_headers_admin
     )
 
     assert response.status_code == 409
@@ -192,20 +224,22 @@ def test_no_se_puede_actualizar_materia_con_nombre_duplicado(
 
 def test_no_se_puede_actualizar_materia_parcialmente_con_nombre_duplicado(
     client,
-    usuario_admin
+    auth_headers_admin
 ):
     response = client.post(
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        },
+        headers=auth_headers_admin
     )
 
     response = client.post(
         "/materias/",
         json={
             "nombre": "Historia",
-        }
+        },
+        headers=auth_headers_admin
     )
 
     materia_id = response.json()["id"]
@@ -214,7 +248,8 @@ def test_no_se_puede_actualizar_materia_parcialmente_con_nombre_duplicado(
         f"/materias/{materia_id}",
         json={
             "nombre": "Matemáticas"
-        }
+        },
+        headers=auth_headers_admin
     )
 
     assert response.status_code == 409
@@ -225,20 +260,22 @@ def test_no_se_puede_actualizar_materia_parcialmente_con_nombre_duplicado(
 
 def test_no_se_puede_actualizar_materia_con_patch_vacio(
     client,
-    usuario_admin
+    auth_headers_admin
 ):
     response = client.post(
         "/materias/",
         json={
             "nombre": "Historia",
-        }
+        },
+        headers=auth_headers_admin
     )
 
     materia_id = response.json()["id"]
 
     response = client.patch(
         f"/materias/{materia_id}",
-        json={}
+        json={},
+        headers=auth_headers_admin
     )
 
     assert response.status_code == 400
@@ -248,78 +285,90 @@ def test_no_se_puede_actualizar_materia_con_patch_vacio(
     }
 
 
-def test_crear_materia_sin_permiso(client, usuario_maestro):
+def test_crear_materia_sin_permiso(client, auth_headers_maestro):
     response = client.post(
         "/materias/",
         json={
             "nombre": "Matemática"
-        }
+        },
+        headers=auth_headers_maestro
     )
 
     assert response.status_code == 403
     assert response.json()["detail"] == "No tiene permiso para realizar esta acción"
 
 
-def test_crear_materia_con_permiso(client, usuario_admin):
+def test_crear_materia_con_permiso(client, auth_headers_admin):
     response = client.post(
         "/materias/",
         json={
             "nombre": "Matemática"
-        }
+        },
+        headers=auth_headers_admin
     )
 
     assert response.status_code == 201
 
 
-def test_actualizar_materia_sin_permiso(client, db, usuario_maestro):
+def test_actualizar_materia_sin_permiso(
+    client,
+    db,
+    auth_headers_maestro
+):
     materia = Materia(nombre="Matematica")
 
     db.add(materia)
     db.commit()
     db.refresh(materia)
-
-    materia_id = materia.id
 
     response = client.put(
-        f"/materias/{materia_id}",
+        f"/materias/{materia.id}",
         json={
             "nombre": "Historia"
-        }
+        },
+        headers=auth_headers_maestro
     )
 
     assert response.status_code == 403
 
 
-def test_actualizar_materia_parcialmente_sin_permiso(client, db, usuario_maestro):
+def test_actualizar_materia_parcialmente_sin_permiso(
+    client,
+    db,
+    auth_headers_maestro
+):
     materia = Materia(nombre="Matematica")
 
     db.add(materia)
     db.commit()
     db.refresh(materia)
-
-    materia_id = materia.id
-
 
     response = client.patch(
-        f"/materias/{materia_id}",
+        f"/materias/{materia.id}",
         json={
             "nombre": "Historia"
-        }
+        },
+        headers=auth_headers_maestro
     )
 
     assert response.status_code == 403
 
 
-def test_eliminar_materia_sin_permiso(client, db, usuario_maestro):
+def test_eliminar_materia_sin_permiso(
+    client,
+    db,
+    auth_headers_maestro
+):
     materia = Materia(nombre="Matematica")
 
     db.add(materia)
     db.commit()
     db.refresh(materia)
 
-    materia_id = materia.id
-
-    response = client.delete(f"/materias/{materia_id}")
+    response = client.delete(
+        f"/materias/{materia.id}",
+        headers=auth_headers_maestro
+    )
 
     assert response.status_code == 403
 
@@ -346,7 +395,11 @@ def test_materia_asignada_a_maestro(db):
     assert materia in maestro.materias
 
 
-def test_eliminar_materia_con_inscripcion_sin_calificacion(client, db):
+def test_eliminar_materia_con_inscripcion_sin_calificacion(
+    client,
+    db,
+    auth_headers_admin
+):
     alumno = Alumno(
         nombre="Juan",
         apellido="Perez",
@@ -368,7 +421,10 @@ def test_eliminar_materia_con_inscripcion_sin_calificacion(client, db):
     db.add(inscripcion)
     db.commit()
 
-    response = client.delete(f"/materias/{materia.id}")
+    response = client.delete(
+        f"/materias/{materia.id}",
+        headers=auth_headers_admin
+    )
 
     assert response.status_code == 204
 
@@ -379,7 +435,11 @@ def test_eliminar_materia_con_inscripcion_sin_calificacion(client, db):
     assert inscripcion_existente is None
 
 
-def test_no_eliminar_materia_con_calificaciones(client, db, usuario_admin):
+def test_no_eliminar_materia_con_calificaciones(
+    client,
+    db,
+    auth_headers_admin
+):
     alumno = Alumno(
         nombre="Juan",
         apellido="Perez",
@@ -412,7 +472,8 @@ def test_no_eliminar_materia_con_calificaciones(client, db, usuario_admin):
     db.commit()
 
     response = client.delete(
-        f"/materias/{materia.id}"
+        f"/materias/{materia.id}",
+        headers=auth_headers_admin
     )
 
     assert response.status_code == 409

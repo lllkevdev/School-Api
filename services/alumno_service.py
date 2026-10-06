@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
 from models.alumno import Alumno
+from models.usuario import Usuario
 from schemas.alumno import (
     Alumno as AlumnoSchema,
     AlumnoActualizar
@@ -34,7 +34,7 @@ def obtener_alumnos(db: Session) -> list[Alumno]:
 def buscar_alumno(
     db: Session,
     alumno_id: int,
-    usuario: dict
+    usuario: Usuario
 ) -> tuple[Alumno | None, str | None]:
 
     alumno = db.query(Alumno).filter(
@@ -44,8 +44,8 @@ def buscar_alumno(
     if alumno is None:
         return None, "alumno"
 
-    if usuario["rol"] == Rol.ALUMNO:
-        if usuario["alumno_id"] != alumno_id:
+    if usuario.rol == Rol.ALUMNO:
+        if usuario.alumno_id != alumno_id:
             return None, "permiso"
 
     return alumno, None

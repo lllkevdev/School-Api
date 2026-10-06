@@ -58,6 +58,16 @@ ERRORES_HTTP = {
         403,
         "No tiene permiso para realizar esta acción"
     ),
+    
+    "credenciales": (
+        401,
+        "Credenciales inválidas"
+    ),
+
+    "no_autenticado":(
+        401,
+        "No autenticado"
+    ),
 
     "tiene_calificaciones": (
     409,

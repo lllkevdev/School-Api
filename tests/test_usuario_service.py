@@ -9,7 +9,7 @@ from models.calificacion import Calificacion
 from models.materia import Materia
 
 from app.main import app
-from core.dependencies import get_usuario_actual
+from core.security import hash_password
 
 import pytest
 from sqlalchemy.exc import IntegrityError
@@ -78,10 +78,6 @@ def test_verificar_password(db):
     ) is False
 
 
-
-
-
-
 def test_usuario_puede_asociarse_a_un_alumno(db):
     alumno = Alumno(
         nombre="Juan",
@@ -137,52 +133,68 @@ def test_alumno_puede_ver_su_calificacion(client, db):
     usuario = Usuario(
         nombre="Juan Perez",
         email="juan@example.com",
-        password_hash="hash",
+        password_hash=hash_password("123456"),
         rol=Rol.ALUMNO,
-        alumno_id=alumno.id
+        alumno_id=alumno.id,
+        activo=True
     )
     db.add(usuario)
     db.commit()
     db.refresh(usuario)
 
-    def usuario_alumno_override():
-        return {
-            "id": usuario.id,
-            "rol": Rol.ALUMNO,
-            "alumno_id": usuario.alumno_id
+    login_response = client.post(
+        "/auth/login",
+        json={
+            "email": usuario.email,
+            "password": "123456"
         }
+    )
 
-    app.dependency_overrides[get_usuario_actual] = usuario_alumno_override
+    assert login_response.status_code == 200
 
-    response = client.get(f"/calificaciones/{calificacion.id}")
+    token = login_response.json()["access_token"]
 
-    app.dependency_overrides.pop(get_usuario_actual, None)
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+
+    response = client.get(
+        f"/calificaciones/{calificacion.id}",
+        headers=headers
+    )
 
     assert response.status_code == 200
     assert response.json()["id"] == calificacion.id
 
 
-
-
-
-def test_alumno_no_puede_ver_calificacion_de_otro_alumno(client, db):
+def test_alumno_no_puede_ver_calificacion_de_otro_alumno(
+    client,
+    db
+):
     alumno_1 = Alumno(
         nombre="Juan",
         apellido="Perez",
         edad=20
     )
+
     alumno_2 = Alumno(
         nombre="Pedro",
         apellido="Gomez",
         edad=21
     )
 
-    db.add_all([alumno_1, alumno_2])
+    db.add_all([
+        alumno_1,
+        alumno_2
+    ])
     db.commit()
     db.refresh(alumno_1)
     db.refresh(alumno_2)
 
-    materia = Materia(nombre="Matematica")
+    materia = Materia(
+        nombre="Matematica"
+    )
+
     db.add(materia)
     db.commit()
     db.refresh(materia)
@@ -193,6 +205,7 @@ def test_alumno_no_puede_ver_calificacion_de_otro_alumno(client, db):
         nota=8,
         periodo=2
     )
+
     db.add(calificacion)
     db.commit()
     db.refresh(calificacion)
@@ -200,26 +213,36 @@ def test_alumno_no_puede_ver_calificacion_de_otro_alumno(client, db):
     usuario = Usuario(
         nombre="Pedro Gomez",
         email="pedro@example.com",
-        password_hash="hash",
+        password_hash=hash_password("123456"),
         rol=Rol.ALUMNO,
-        alumno_id=alumno_2.id
+        alumno_id=alumno_2.id,
+        activo=True
     )
+
     db.add(usuario)
     db.commit()
     db.refresh(usuario)
 
-    def usuario_alumno_override():
-        return {
-            "id": usuario.id,
-            "rol": Rol.ALUMNO,
-            "alumno_id": usuario.alumno_id
+    login_response = client.post(
+        "/auth/login",
+        json={
+            "email": usuario.email,
+            "password": "123456"
         }
+    )
 
-    app.dependency_overrides[get_usuario_actual] = usuario_alumno_override
+    assert login_response.status_code == 200
 
-    response = client.get(f"/calificaciones/{calificacion.id}")
-    
-    app.dependency_overrides.pop(get_usuario_actual, None)
+    token = login_response.json()["access_token"]
+
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+
+    response = client.get(
+        f"/calificaciones/{calificacion.id}",
+        headers=headers
+    )
 
     assert response.status_code == 403
 

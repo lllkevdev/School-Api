@@ -1,5 +1,4 @@
 from app.main import app
-from core.dependencies import get_usuario_actual
 from core.permisos import Rol
 from models.alumno import Alumno
 from models.calificacion import Calificacion
@@ -7,7 +6,7 @@ from models.materia import Materia
 from models.usuario import Usuario
 from models.inscripcion import Inscripcion
 from services.calificacion_service import buscar_calificaciones
-
+from core.security import hash_password
 
 def asegurar_inscripcion(db, alumno_id, materia_id):
     inscripcion = db.query(Inscripcion).filter(
@@ -28,14 +27,14 @@ def asegurar_inscripcion(db, alumno_id, materia_id):
 # ============================================================
 
 
-def test_crear_calificacion(client):
+def test_crear_calificacion(client, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        }, headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
@@ -44,7 +43,7 @@ def test_crear_calificacion(client):
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        }, headers=auth_headers_admin
     )
 
     materia_id = response.json()["id"]
@@ -54,7 +53,7 @@ def test_crear_calificacion(client):
         json={
             "alumno_id": alumno_id,
             "materia_id": materia_id,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 201
@@ -66,7 +65,7 @@ def test_crear_calificacion(client):
             "materia_id": materia_id,
             "nota": 8.5,
             "periodo": 2,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 201
@@ -74,12 +73,12 @@ def test_crear_calificacion(client):
     assert response.json()["periodo"] == 2
 
 
-def test_crear_calificacion_alumno_inexistente(client):
+def test_crear_calificacion_alumno_inexistente(client, auth_headers_admin):
     response = client.post(
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        }, headers=auth_headers_admin
     )
 
     materia_id = response.json()["id"]
@@ -91,7 +90,7 @@ def test_crear_calificacion_alumno_inexistente(client):
             "materia_id": materia_id,
             "nota": 8.5,
             "periodo": 2,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 404
@@ -100,14 +99,14 @@ def test_crear_calificacion_alumno_inexistente(client):
     }
 
 
-def test_crear_calificacion_materia_inexistente(client):
+def test_crear_calificacion_materia_inexistente(client, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        }, headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
@@ -119,7 +118,7 @@ def test_crear_calificacion_materia_inexistente(client):
             "materia_id": 999,
             "nota": 8.5,
             "periodo": 2,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 404
@@ -128,14 +127,14 @@ def test_crear_calificacion_materia_inexistente(client):
     }
 
 
-def test_crear_calificacion_sin_nota(client):
+def test_crear_calificacion_sin_nota(client, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        }, headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
@@ -144,7 +143,7 @@ def test_crear_calificacion_sin_nota(client):
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        }, headers=auth_headers_admin
     )
 
     materia_id = response.json()["id"]
@@ -155,21 +154,21 @@ def test_crear_calificacion_sin_nota(client):
             "alumno_id": alumno_id,
             "materia_id": materia_id,
             "periodo": 2,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 422
     assert "nota" in str(response.json())
 
 
-def test_crear_calificacion_sin_periodo(client):
+def test_crear_calificacion_sin_periodo(client, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        }, headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
@@ -178,7 +177,7 @@ def test_crear_calificacion_sin_periodo(client):
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        }, headers=auth_headers_admin
     )
 
     materia_id = response.json()["id"]
@@ -189,19 +188,19 @@ def test_crear_calificacion_sin_periodo(client):
             "alumno_id": alumno_id,
             "materia_id": materia_id,
             "nota": 8.5,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 422
     assert "periodo" in str(response.json())
 
 
-def test_crear_calificacion_sin_alumno_id(client):
+def test_crear_calificacion_sin_alumno_id(client, auth_headers_admin):
     response = client.post(
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        }, headers=auth_headers_admin
     )
 
     materia_id = response.json()["id"]
@@ -212,21 +211,21 @@ def test_crear_calificacion_sin_alumno_id(client):
             "materia_id": materia_id,
             "nota": 8.5,
             "periodo": 2,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 422
     assert "alumno_id" in str(response.json())
 
 
-def test_crear_calificacion_sin_materia_id(client):
+def test_crear_calificacion_sin_materia_id(client, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        }, headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
@@ -237,7 +236,7 @@ def test_crear_calificacion_sin_materia_id(client):
             "alumno_id": alumno_id,
             "nota": 8.5,
             "periodo": 2,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 422
@@ -245,14 +244,14 @@ def test_crear_calificacion_sin_materia_id(client):
 
 
 
-def test_no_se_puede_crear_calificacion_duplicada(client):
+def test_no_se_puede_crear_calificacion_duplicada(client, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        }, headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
@@ -261,7 +260,7 @@ def test_no_se_puede_crear_calificacion_duplicada(client):
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        }, headers=auth_headers_admin
     )
 
     materia_id = response.json()["id"]
@@ -271,7 +270,7 @@ def test_no_se_puede_crear_calificacion_duplicada(client):
         json={
             "alumno_id": alumno_id,
             "materia_id": materia_id,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 201
@@ -283,7 +282,7 @@ def test_no_se_puede_crear_calificacion_duplicada(client):
             "materia_id": materia_id,
             "nota": 8,
             "periodo": 2,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 201
@@ -295,14 +294,14 @@ def test_no_se_puede_crear_calificacion_duplicada(client):
             "materia_id": materia_id,
             "nota": 9,
             "periodo": 2,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 409
 
 
 def test_crear_calificacion_alumno_no_inscripto(
-    client,
+    client, auth_headers_admin,
 ):
     alumno = client.post(
         "/alumnos/",
@@ -310,7 +309,7 @@ def test_crear_calificacion_alumno_no_inscripto(
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        }, headers=auth_headers_admin
     )
 
     alumno_id = alumno.json()["id"]
@@ -319,7 +318,7 @@ def test_crear_calificacion_alumno_no_inscripto(
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        }, headers=auth_headers_admin
     )
 
     materia_id = materia.json()["id"]
@@ -331,7 +330,7 @@ def test_crear_calificacion_alumno_no_inscripto(
             "materia_id": materia_id,
             "nota": 8,
             "periodo": 1,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 409
@@ -341,14 +340,14 @@ def test_crear_calificacion_alumno_no_inscripto(
 # VALIDACIONES DE NOTA Y PERÍODO
 # ============================================================
 
-def test_crear_calificacion_nota_menor_al_minimo(client):
+def test_crear_calificacion_nota_menor_al_minimo(client, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        }, headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
@@ -357,7 +356,7 @@ def test_crear_calificacion_nota_menor_al_minimo(client):
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        }, headers=auth_headers_admin
     )
 
     materia_id = response.json()["id"]
@@ -369,21 +368,21 @@ def test_crear_calificacion_nota_menor_al_minimo(client):
             "materia_id": materia_id,
             "nota": 0,
             "periodo": 2,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 422
     assert "nota" in str(response.json())
 
 
-def test_crear_calificacion_nota_mayor_al_maximo(client):
+def test_crear_calificacion_nota_mayor_al_maximo(client, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        }, headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
@@ -392,7 +391,7 @@ def test_crear_calificacion_nota_mayor_al_maximo(client):
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        }, headers=auth_headers_admin
     )
 
     materia_id = response.json()["id"]
@@ -404,21 +403,21 @@ def test_crear_calificacion_nota_mayor_al_maximo(client):
             "materia_id": materia_id,
             "nota": 11,
             "periodo": 2,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 422
     assert "nota" in str(response.json())
 
 
-def test_crear_calificacion_periodo_menor_al_minimo(client):
+def test_crear_calificacion_periodo_menor_al_minimo(client, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        }, headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
@@ -427,7 +426,7 @@ def test_crear_calificacion_periodo_menor_al_minimo(client):
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        }, headers=auth_headers_admin
     )
 
     materia_id = response.json()["id"]
@@ -439,21 +438,21 @@ def test_crear_calificacion_periodo_menor_al_minimo(client):
             "materia_id": materia_id,
             "nota": 8.5,
             "periodo": 0,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 422
     assert "periodo" in str(response.json())
 
 
-def test_crear_calificacion_periodo_mayor_al_maximo(client):
+def test_crear_calificacion_periodo_mayor_al_maximo(client, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        }, headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
@@ -462,7 +461,7 @@ def test_crear_calificacion_periodo_mayor_al_maximo(client):
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        }, headers=auth_headers_admin
     )
 
     materia_id = response.json()["id"]
@@ -474,7 +473,7 @@ def test_crear_calificacion_periodo_mayor_al_maximo(client):
             "materia_id": materia_id,
             "nota": 8.5,
             "periodo": 5,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 422
@@ -485,14 +484,14 @@ def test_crear_calificacion_periodo_mayor_al_maximo(client):
 # OBTENER CALIFICACIONES
 # ============================================================
 
-def test_obtener_calificacion_por_id(client):
+def test_obtener_calificacion_por_id(client, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        }, headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
@@ -501,7 +500,7 @@ def test_obtener_calificacion_por_id(client):
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        }, headers=auth_headers_admin
     )
 
     materia_id = response.json()["id"]
@@ -511,7 +510,7 @@ def test_obtener_calificacion_por_id(client):
         json={
             "alumno_id": alumno_id,
             "materia_id": materia_id,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 201
@@ -523,13 +522,13 @@ def test_obtener_calificacion_por_id(client):
             "materia_id": materia_id,
             "nota": 8.5,
             "periodo": 2,
-        }
+        }, headers=auth_headers_admin
     )
 
     calificacion_id = response.json()["id"]
 
     response = client.get(
-        f"/calificaciones/{calificacion_id}"
+        f"/calificaciones/{calificacion_id}", headers=auth_headers_admin
     )
 
     assert response.status_code == 200
@@ -539,14 +538,14 @@ def test_obtener_calificacion_por_id(client):
     assert response.json()["materia_id"] == materia_id
 
 
-def test_obtener_calificaciones_alumno(client, usuario_admin):
+def test_obtener_calificaciones_alumno(client, usuario_admin, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        }, headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
@@ -555,7 +554,7 @@ def test_obtener_calificaciones_alumno(client, usuario_admin):
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        }, headers=auth_headers_admin
     )
 
     materia_id = response.json()["id"]
@@ -565,7 +564,7 @@ def test_obtener_calificaciones_alumno(client, usuario_admin):
         json={
             "alumno_id": alumno_id,
             "materia_id": materia_id,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 201
@@ -577,11 +576,11 @@ def test_obtener_calificaciones_alumno(client, usuario_admin):
             "materia_id": materia_id,
             "nota": 8.5,
             "periodo": 2,
-        }
+        }, headers=auth_headers_admin
     )
 
     response = client.get(
-        f"/calificaciones/alumno/{alumno_id}"
+        f"/calificaciones/alumno/{alumno_id}", headers=auth_headers_admin
     )
 
     assert response.status_code == 200
@@ -594,14 +593,14 @@ def test_obtener_calificaciones_alumno(client, usuario_admin):
     assert data[0]["periodo"] == 2
 
 
-def test_obtener_calificaciones_alumno_por_periodo(client):
+def test_obtener_calificaciones_alumno_por_periodo(client, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        }, headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
@@ -610,7 +609,7 @@ def test_obtener_calificaciones_alumno_por_periodo(client):
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        }, headers=auth_headers_admin
     )
 
     materia_id = response.json()["id"]
@@ -620,7 +619,7 @@ def test_obtener_calificaciones_alumno_por_periodo(client):
         json={
             "alumno_id": alumno_id,
             "materia_id": materia_id,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 201
@@ -632,7 +631,7 @@ def test_obtener_calificaciones_alumno_por_periodo(client):
             "materia_id": materia_id,
             "nota": 8.5,
             "periodo": 1,
-        }
+        }, headers=auth_headers_admin
     )
 
     client.post(
@@ -642,11 +641,11 @@ def test_obtener_calificaciones_alumno_por_periodo(client):
             "materia_id": materia_id,
             "nota": 9.0,
             "periodo": 2,
-        }
+        }, headers=auth_headers_admin
     )
 
     response = client.get(
-        f"/calificaciones/alumno/{alumno_id}?periodo=2"
+        f"/calificaciones/alumno/{alumno_id}?periodo=2", headers=auth_headers_admin
     )
 
     assert response.status_code == 200
@@ -660,9 +659,9 @@ def test_obtener_calificaciones_alumno_por_periodo(client):
 
 
 
-def test_obtener_calificaciones_alumno_inexistente(client):
+def test_obtener_calificaciones_alumno_inexistente(client, auth_headers_admin):
     response = client.get(
-        "/calificaciones/alumno/999"
+        "/calificaciones/alumno/999", headers=auth_headers_admin
     )
 
     assert response.status_code == 404
@@ -676,14 +675,14 @@ def test_obtener_calificaciones_alumno_inexistente(client):
 # ============================================================
 
 
-def test_obtener_calificaciones_detalle(client):
+def test_obtener_calificaciones_detalle(client, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        }, headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
@@ -692,7 +691,7 @@ def test_obtener_calificaciones_detalle(client):
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        }, headers=auth_headers_admin
     )
 
     materia_id = response.json()["id"]
@@ -702,7 +701,7 @@ def test_obtener_calificaciones_detalle(client):
         json={
             "alumno_id": alumno_id,
             "materia_id": materia_id,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 201
@@ -714,11 +713,11 @@ def test_obtener_calificaciones_detalle(client):
             "materia_id": materia_id,
             "nota": 8.5,
             "periodo": 1,
-        }
+        }, headers=auth_headers_admin
     )
 
     response = client.get(
-        "/calificaciones/detalle"
+        "/calificaciones/detalle", headers=auth_headers_admin
     )
 
     assert response.status_code == 200
@@ -735,14 +734,14 @@ def test_obtener_calificaciones_detalle(client):
 
 
 
-def test_obtener_estadisticas_alumno(client):
+def test_obtener_estadisticas_alumno(client, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        }, headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
@@ -752,7 +751,7 @@ def test_obtener_estadisticas_alumno(client):
     for nombre in ["Matemáticas", "Historia", "Programacion"]:
         response = client.post(
             "/materias/",
-            json={"nombre": nombre}
+            json={"nombre": nombre}, headers=auth_headers_admin
         )
         materias.append(response.json()["id"])
 
@@ -764,7 +763,7 @@ def test_obtener_estadisticas_alumno(client):
             json={
                 "alumno_id": alumno_id,
                 "materia_id": materia_id,
-            }
+            }, headers=auth_headers_admin
         )
 
         assert response.status_code == 201
@@ -776,11 +775,11 @@ def test_obtener_estadisticas_alumno(client):
                 "materia_id": materia_id,
                 "nota": nota,
                 "periodo": 1,
-            }
+            }, headers=auth_headers_admin
         )
 
     response = client.get(
-        f"/calificaciones/alumno/{alumno_id}/estadisticas"
+        f"/calificaciones/alumno/{alumno_id}/estadisticas", headers=auth_headers_admin
     )
 
     assert response.status_code == 200
@@ -825,9 +824,9 @@ def test_obtener_estadisticas_alumno(client):
 
 
 
-def test_obtener_estadisticas_de_alumno_inexistente(client):
+def test_obtener_estadisticas_de_alumno_inexistente(client, auth_headers_admin):
     response = client.get(
-        "/calificaciones/alumno/9999/estadisticas"
+        "/calificaciones/alumno/9999/estadisticas", headers=auth_headers_admin
     )
 
     assert response.status_code == 404
@@ -836,20 +835,20 @@ def test_obtener_estadisticas_de_alumno_inexistente(client):
     }
 
 
-def test_estadisticas_sin_calificaciones(client):
+def test_estadisticas_sin_calificaciones(client, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        }, headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
 
     response = client.get(
-        f"/calificaciones/alumno/{alumno_id}/estadisticas"
+        f"/calificaciones/alumno/{alumno_id}/estadisticas", headers=auth_headers_admin
     )
 
     assert response.status_code == 404
@@ -863,14 +862,14 @@ def test_estadisticas_sin_calificaciones(client):
 # ============================================================
 
 
-def test_actualizar_calificacion(client):
+def test_actualizar_calificacion(client, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        }, headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
@@ -879,7 +878,7 @@ def test_actualizar_calificacion(client):
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        }, headers=auth_headers_admin
     )
 
     materia_id = response.json()["id"]
@@ -889,7 +888,7 @@ def test_actualizar_calificacion(client):
         json={
             "alumno_id": alumno_id,
             "materia_id": materia_id,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 201
@@ -901,7 +900,7 @@ def test_actualizar_calificacion(client):
             "materia_id": materia_id,
             "nota": 8.5,
             "periodo": 2,
-        }
+        }, headers=auth_headers_admin
     )
 
     calificacion_id = response.json()["id"]
@@ -911,7 +910,7 @@ def test_actualizar_calificacion(client):
         json={
             "nota": 9.0,
             "periodo": 3,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 200
@@ -922,13 +921,13 @@ def test_actualizar_calificacion(client):
 
 
 
-def test_actualizar_calificacion_inexistente(client):
+def test_actualizar_calificacion_inexistente(client, auth_headers_admin):
     response = client.patch(
         "/calificaciones/999",
         json={
             "nota": 9.0,
             "periodo": 3,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 404
@@ -937,14 +936,14 @@ def test_actualizar_calificacion_inexistente(client):
     }
 
 
-def test_actualizar_nota(client):
+def test_actualizar_nota(client, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        }, headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
@@ -953,7 +952,7 @@ def test_actualizar_nota(client):
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        }, headers=auth_headers_admin
     )
 
     materia_id = response.json()["id"]
@@ -963,7 +962,7 @@ def test_actualizar_nota(client):
         json={
             "alumno_id": alumno_id,
             "materia_id": materia_id,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 201
@@ -975,14 +974,14 @@ def test_actualizar_nota(client):
             "materia_id": materia_id,
             "nota": 7,
             "periodo": 1,
-        }
+        }, headers=auth_headers_admin
     )
 
     calificacion_id = response.json()["id"]
 
     response = client.patch(
         f"/calificaciones/{calificacion_id}",
-        json={"nota": 9}
+        json={"nota": 9}, headers=auth_headers_admin
     )
 
     assert response.status_code == 200
@@ -991,14 +990,14 @@ def test_actualizar_nota(client):
 
 
 
-def test_actualizar_periodo(client):
+def test_actualizar_periodo(client, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        }, headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
@@ -1007,7 +1006,7 @@ def test_actualizar_periodo(client):
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        }, headers=auth_headers_admin
     )
 
     materia_id = response.json()["id"]
@@ -1017,7 +1016,7 @@ def test_actualizar_periodo(client):
         json={
             "alumno_id": alumno_id,
             "materia_id": materia_id,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 201
@@ -1029,14 +1028,14 @@ def test_actualizar_periodo(client):
             "materia_id": materia_id,
             "nota": 7,
             "periodo": 1,
-        }
+        }, headers=auth_headers_admin
     )
 
     calificacion_id = response.json()["id"]
 
     response = client.patch(
         f"/calificaciones/{calificacion_id}",
-        json={"periodo": 2}
+        json={"periodo": 2}, headers=auth_headers_admin
     )
 
     assert response.status_code == 200
@@ -1044,14 +1043,14 @@ def test_actualizar_periodo(client):
     assert response.json()["nota"] == 7
 
 
-def test_actualizar_nota_invalida(client):
+def test_actualizar_nota_invalida(client, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        }, headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
@@ -1060,7 +1059,7 @@ def test_actualizar_nota_invalida(client):
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        }, headers=auth_headers_admin
     )
 
     materia_id = response.json()["id"]
@@ -1070,7 +1069,7 @@ def test_actualizar_nota_invalida(client):
         json={
             "alumno_id": alumno_id,
             "materia_id": materia_id,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 201
@@ -1082,14 +1081,14 @@ def test_actualizar_nota_invalida(client):
             "materia_id": materia_id,
             "nota": 7,
             "periodo": 1,
-        }
+        }, headers=auth_headers_admin
     )
 
     calificacion_id = response.json()["id"]
 
     response = client.patch(
         f"/calificaciones/{calificacion_id}",
-        json={"nota": 15}
+        json={"nota": 15}, headers=auth_headers_admin
     )
 
     assert response.status_code == 422
@@ -1097,14 +1096,14 @@ def test_actualizar_nota_invalida(client):
 
 
 
-def test_cambiar_materia_de_una_calificacion(client):
+def test_cambiar_materia_de_una_calificacion(client, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        }, headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
@@ -1112,13 +1111,13 @@ def test_cambiar_materia_de_una_calificacion(client):
     response = client.post(
         "/materias/",
         json={"nombre": "Matemáticas"}
-    )
+, headers=auth_headers_admin    )
 
     materia_id = response.json()["id"]
 
     response = client.post(
         "/materias/",
-        json={"nombre": "Historia"}
+        json={"nombre": "Historia"}, headers=auth_headers_admin
     )
 
     materia_id2 = response.json()["id"]
@@ -1128,7 +1127,7 @@ def test_cambiar_materia_de_una_calificacion(client):
         json={
             "alumno_id": alumno_id,
             "materia_id": materia_id,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 201
@@ -1138,7 +1137,7 @@ def test_cambiar_materia_de_una_calificacion(client):
         json={
             "alumno_id": alumno_id,
             "materia_id": materia_id2,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 201
@@ -1150,14 +1149,14 @@ def test_cambiar_materia_de_una_calificacion(client):
             "materia_id": materia_id,
             "nota": 10,
             "periodo": 1,
-        }
+        }, headers=auth_headers_admin
     )
 
     calificacion_id = response.json()["id"]
 
     response = client.patch(
         f"/calificaciones/{calificacion_id}",
-        json={"materia_id": materia_id2}
+        json={"materia_id": materia_id2}, headers=auth_headers_admin
     )
 
     assert response.status_code == 200
@@ -1167,14 +1166,14 @@ def test_cambiar_materia_de_una_calificacion(client):
 
 
 
-def test_actualizar_calificacion_materia_inexistente(client):
+def test_actualizar_calificacion_materia_inexistente(client, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        }, headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
@@ -1182,7 +1181,7 @@ def test_actualizar_calificacion_materia_inexistente(client):
     response = client.post(
         "/materias/",
         json={"nombre": "Matemáticas"}
-    )
+, headers=auth_headers_admin    )
 
     materia_id = response.json()["id"]
 
@@ -1191,7 +1190,7 @@ def test_actualizar_calificacion_materia_inexistente(client):
         json={
             "alumno_id": alumno_id,
             "materia_id": materia_id,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 201
@@ -1203,14 +1202,14 @@ def test_actualizar_calificacion_materia_inexistente(client):
             "materia_id": materia_id,
             "nota": 10,
             "periodo": 1,
-        }
+        }, headers=auth_headers_admin
     )
 
     calificacion_id = response.json()["id"]
 
     response = client.patch(
         f"/calificaciones/{calificacion_id}",
-        json={"materia_id": 999}
+        json={"materia_id": 999}, headers=auth_headers_admin
     )
 
     assert response.status_code == 404
@@ -1219,14 +1218,14 @@ def test_actualizar_calificacion_materia_inexistente(client):
     }
 
 
-def test_actualizar_calificacion_alumno_inexistente(client):
+def test_actualizar_calificacion_alumno_inexistente(client, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        }, headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
@@ -1234,7 +1233,7 @@ def test_actualizar_calificacion_alumno_inexistente(client):
     response = client.post(
         "/materias/",
         json={"nombre": "Matemáticas"}
-    )
+, headers=auth_headers_admin    )
 
     materia_id = response.json()["id"]
 
@@ -1243,7 +1242,7 @@ def test_actualizar_calificacion_alumno_inexistente(client):
         json={
             "alumno_id": alumno_id,
             "materia_id": materia_id,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 201
@@ -1255,14 +1254,14 @@ def test_actualizar_calificacion_alumno_inexistente(client):
             "materia_id": materia_id,
             "nota": 10,
             "periodo": 1,
-        }
+        }, headers=auth_headers_admin
     )
 
     calificacion_id = response.json()["id"]
 
     response = client.patch(
         f"/calificaciones/{calificacion_id}",
-        json={"alumno_id": 999}
+        json={"alumno_id": 999}, headers=auth_headers_admin
     )
 
     assert response.status_code == 404
@@ -1271,14 +1270,14 @@ def test_actualizar_calificacion_alumno_inexistente(client):
     }
 
 
-def test_actualizar_calificacion_genera_duplicado(client):
+def test_actualizar_calificacion_genera_duplicado(client, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        }, headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
@@ -1287,7 +1286,7 @@ def test_actualizar_calificacion_genera_duplicado(client):
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        }, headers=auth_headers_admin
     )
 
     materia_id = response.json()["id"]
@@ -1296,7 +1295,7 @@ def test_actualizar_calificacion_genera_duplicado(client):
         "/materias/",
         json={
             "nombre": "Historia",
-        }
+        }, headers=auth_headers_admin
     )
 
     materia_id2 = response.json()["id"]
@@ -1307,7 +1306,7 @@ def test_actualizar_calificacion_genera_duplicado(client):
         json={
             "alumno_id": alumno_id,
             "materia_id": materia_id,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 201
@@ -1317,7 +1316,7 @@ def test_actualizar_calificacion_genera_duplicado(client):
         json={
             "alumno_id": alumno_id,
             "materia_id": materia_id2,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 201
@@ -1330,7 +1329,7 @@ def test_actualizar_calificacion_genera_duplicado(client):
             "materia_id": materia_id,
             "nota": 8,
             "periodo": 1,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 201
@@ -1343,7 +1342,7 @@ def test_actualizar_calificacion_genera_duplicado(client):
             "materia_id": materia_id2,
             "nota": 7,
             "periodo": 1,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 201
@@ -1355,13 +1354,13 @@ def test_actualizar_calificacion_genera_duplicado(client):
         f"/calificaciones/{calificacion_id}",
         json={
             "materia_id": materia_id,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 409
 
 
-def test_admin_puede_cambiar_alumno_de_una_calificacion(client, db):
+def test_admin_puede_cambiar_alumno_de_una_calificacion(client, db, auth_headers_admin):
     alumno_original = Alumno(
         nombre="Juan",
         apellido="Perez",
@@ -1421,7 +1420,7 @@ def test_admin_puede_cambiar_alumno_de_una_calificacion(client, db):
         f"/calificaciones/{calificacion.id}",
         json={
             "alumno_id": alumno_nuevo.id,
-        },
+        }, headers=auth_headers_admin,
     )
 
     assert response.status_code == 200
@@ -1435,14 +1434,14 @@ def test_admin_puede_cambiar_alumno_de_una_calificacion(client, db):
 
 
 
-def test_no_se_puede_cambiar_materia_sin_inscripcion(client):
+def test_no_se_puede_cambiar_materia_sin_inscripcion(client, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        }, headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
@@ -1450,13 +1449,13 @@ def test_no_se_puede_cambiar_materia_sin_inscripcion(client):
     response = client.post(
         "/materias/",
         json={"nombre": "Matemáticas"}
-    )
+, headers=auth_headers_admin    )
 
     materia_id = response.json()["id"]
 
     response = client.post(
         "/materias/",
-        json={"nombre": "Historia"}
+        json={"nombre": "Historia"}, headers=auth_headers_admin
     )
 
     materia_id2 = response.json()["id"]
@@ -1466,7 +1465,7 @@ def test_no_se_puede_cambiar_materia_sin_inscripcion(client):
         json={
             "alumno_id": alumno_id,
             "materia_id": materia_id,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 201
@@ -1478,7 +1477,7 @@ def test_no_se_puede_cambiar_materia_sin_inscripcion(client):
             "materia_id": materia_id,
             "nota": 8,
             "periodo": 1,
-        }
+        }, headers=auth_headers_admin
     )
 
     calificacion_id = response.json()["id"]
@@ -1487,7 +1486,7 @@ def test_no_se_puede_cambiar_materia_sin_inscripcion(client):
         f"/calificaciones/{calificacion_id}",
         json={
             "materia_id": materia_id2,
-        },
+        }, headers=auth_headers_admin,
     )
 
     assert response.status_code == 409
@@ -1498,14 +1497,14 @@ def test_no_se_puede_cambiar_materia_sin_inscripcion(client):
 # ============================================================
 
 
-def test_eliminar_calificacion(client, usuario_admin):
+def test_eliminar_calificacion(client, usuario_admin, auth_headers_admin):
     response = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        }, headers=auth_headers_admin
     )
 
     alumno_id = response.json()["id"]
@@ -1513,7 +1512,7 @@ def test_eliminar_calificacion(client, usuario_admin):
     response = client.post(
         "/materias/",
         json={"nombre": "Matemáticas"}
-    )
+, headers=auth_headers_admin    )
 
     materia_id = response.json()["id"]
 
@@ -1522,7 +1521,7 @@ def test_eliminar_calificacion(client, usuario_admin):
         json={
             "alumno_id": alumno_id,
             "materia_id": materia_id,
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 201
@@ -1534,27 +1533,27 @@ def test_eliminar_calificacion(client, usuario_admin):
             "materia_id": materia_id,
             "nota": 8.5,
             "periodo": 2,
-        }
+        }, headers=auth_headers_admin
     )
 
     calificacion_id = response.json()["id"]
 
     response = client.delete(
-        f"/calificaciones/{calificacion_id}"
+        f"/calificaciones/{calificacion_id}", headers=auth_headers_admin
     )
 
     assert response.status_code == 204
 
     response = client.get(
-        f"/calificaciones/{calificacion_id}"
+        f"/calificaciones/{calificacion_id}", headers=auth_headers_admin
     )
 
     assert response.status_code == 404
 
 
-def test_eliminar_calificacion_inexistente(client):
+def test_eliminar_calificacion_inexistente(client, auth_headers_admin):
     response = client.delete(
-        "/calificaciones/999"
+        "/calificaciones/999", headers=auth_headers_admin
     )
 
     assert response.status_code == 404
@@ -1566,7 +1565,7 @@ def test_eliminar_calificacion_inexistente(client):
 def test_maestro_puede_eliminar_calificacion_de_su_materia(
     client,
     db,
-    usuario_maestro,
+    usuario_maestro, auth_headers_maestro,
 ):
     alumno = Alumno(
         nombre="Juan",
@@ -1598,13 +1597,13 @@ def test_maestro_puede_eliminar_calificacion_de_su_materia(
     db.refresh(calificacion)
 
     response = client.delete(
-        f"/calificaciones/{calificacion.id}"
+        f"/calificaciones/{calificacion.id}", headers=auth_headers_maestro
     )
 
     assert response.status_code == 204
 
     response = client.get(
-        f"/calificaciones/{calificacion.id}"
+        f"/calificaciones/{calificacion.id}", headers=auth_headers_maestro
     )
 
     assert response.status_code == 404
@@ -1613,7 +1612,7 @@ def test_maestro_puede_eliminar_calificacion_de_su_materia(
 def test_maestro_no_puede_eliminar_calificacion_de_materia_ajena(
     client,
     db,
-    usuario_maestro,
+    usuario_maestro, auth_headers_maestro,
 ):
     otro_maestro = Usuario(
         nombre="Pedro",
@@ -1656,7 +1655,7 @@ def test_maestro_no_puede_eliminar_calificacion_de_materia_ajena(
     db.refresh(calificacion)
 
     response = client.delete(
-        f"/calificaciones/{calificacion.id}"
+        f"/calificaciones/{calificacion.id}", headers=auth_headers_maestro
     )
 
     assert response.status_code == 403
@@ -1665,7 +1664,7 @@ def test_maestro_no_puede_eliminar_calificacion_de_materia_ajena(
 def test_alumno_no_puede_eliminar_calificacion(
         client,
         db,
-        usuario_alumno
+        usuario_alumno, auth_headers_alumno
 ):
     alumno = Alumno(
         nombre="Juan",
@@ -1696,7 +1695,7 @@ def test_alumno_no_puede_eliminar_calificacion(
     db.refresh(calificacion)
 
     response = client.delete(
-        f"/calificaciones/{calificacion.id}"
+        f"/calificaciones/{calificacion.id}", headers=auth_headers_alumno
     )
 
     assert response.status_code == 403
@@ -1705,27 +1704,27 @@ def test_alumno_no_puede_eliminar_calificacion(
 # PERMISOS GENERALES
 # ============================================================
 
-def test_crear_calificacion_sin_permiso(client, usuario_alumno):
+def test_crear_calificacion_sin_permiso(client, usuario_alumno, auth_headers_alumno):
     response = client.post(
         "/calificaciones/",
-        json={}
+        json={}, headers=auth_headers_alumno
     )
 
     assert response.status_code == 403
 
 
-def test_actualizar_calificacion_sin_permiso(client, usuario_alumno):
+def test_actualizar_calificacion_sin_permiso(client, usuario_alumno, auth_headers_alumno):
     response = client.patch(
         "/calificaciones/1",
-        json={}
+        json={}, headers=auth_headers_alumno
     )
 
     assert response.status_code == 403
 
 
-def test_eliminar_calificacion_sin_permiso(client, usuario_alumno):
+def test_eliminar_calificacion_sin_permiso(client, usuario_alumno, auth_headers_alumno):
     response = client.delete(
-        "/calificaciones/1"
+        "/calificaciones/1", headers=auth_headers_alumno
     )
 
     assert response.status_code == 403
@@ -1733,10 +1732,10 @@ def test_eliminar_calificacion_sin_permiso(client, usuario_alumno):
 
 def test_alumno_no_puede_ver_todas_las_calificaciones(
     client,
-    usuario_alumno
+    usuario_alumno, auth_headers_alumno
 ):
     response = client.get(
-        "/calificaciones/"
+        "/calificaciones/", headers=auth_headers_alumno
     )
 
     assert response.status_code == 403
@@ -1744,10 +1743,10 @@ def test_alumno_no_puede_ver_todas_las_calificaciones(
 
 def test_alumno_no_puede_ver_detalle_de_todas_las_calificaciones(
     client,
-    usuario_alumno
+    usuario_alumno, auth_headers_alumno
 ):
     response = client.get(
-        "/calificaciones/detalle"
+        "/calificaciones/detalle", headers=auth_headers_alumno
     )
 
     assert response.status_code == 403
@@ -1755,10 +1754,10 @@ def test_alumno_no_puede_ver_detalle_de_todas_las_calificaciones(
 
 def test_maestro_no_puede_ver_todas_las_calificaciones(
     client,
-    usuario_maestro
+    usuario_maestro, auth_headers_maestro
 ):
     response = client.get(
-        "/calificaciones/"
+        "/calificaciones/", headers=auth_headers_maestro
     )
 
     assert response.status_code == 403
@@ -1766,10 +1765,10 @@ def test_maestro_no_puede_ver_todas_las_calificaciones(
 
 def test_maestro_no_puede_ver_detalle_de_todas_las_calificaciones(
     client,
-    usuario_maestro
+    usuario_maestro, auth_headers_maestro
 ):
     response = client.get(
-        "/calificaciones/detalle"
+        "/calificaciones/detalle", headers=auth_headers_maestro
     )
 
     assert response.status_code == 403
@@ -1782,7 +1781,7 @@ def test_maestro_no_puede_ver_detalle_de_todas_las_calificaciones(
 def test_alumno_puede_ver_su_calificacion(
     db,
     client,
-    usuario_alumno
+    usuario_alumno, auth_headers_alumno
 ):
     materia = Materia(
         nombre="Matematica"
@@ -1805,7 +1804,7 @@ def test_alumno_puede_ver_su_calificacion(
     db.refresh(calificacion)
 
     response = client.get(
-        f"/calificaciones/{calificacion.id}"
+        f"/calificaciones/{calificacion.id}", headers=auth_headers_alumno
     )
 
     assert response.status_code == 200
@@ -1815,7 +1814,7 @@ def test_alumno_puede_ver_su_calificacion(
 def test_alumno_no_puede_ver_calificacion_de_otro_alumno(
     db,
     client,
-    usuario_alumno
+    usuario_alumno, auth_headers_alumno
 ):
     otro_alumno = Alumno(
         nombre="Pedro",
@@ -1845,7 +1844,7 @@ def test_alumno_no_puede_ver_calificacion_de_otro_alumno(
     db.refresh(calificacion)
 
     response = client.get(
-        f"/calificaciones/{calificacion.id}"
+        f"/calificaciones/{calificacion.id}", headers=auth_headers_alumno
     )
 
     assert response.status_code == 403
@@ -1854,7 +1853,7 @@ def test_alumno_no_puede_ver_calificacion_de_otro_alumno(
 def test_alumno_no_puede_ver_calificaciones_de_otro_alumno(
     db,
     client,
-    usuario_alumno
+    usuario_alumno, auth_headers_alumno
 ):
     otro_alumno = Alumno(
         nombre="Pedro",
@@ -1883,7 +1882,7 @@ def test_alumno_no_puede_ver_calificaciones_de_otro_alumno(
     db.commit()
 
     response = client.get(
-        f"/calificaciones/alumno/{otro_alumno.id}"
+        f"/calificaciones/alumno/{otro_alumno.id}", headers=auth_headers_alumno
     )
 
     assert response.status_code == 403
@@ -1892,7 +1891,7 @@ def test_alumno_no_puede_ver_calificaciones_de_otro_alumno(
 def test_alumno_puede_ver_sus_calificaciones(
     db,
     client,
-    usuario_alumno
+    usuario_alumno, auth_headers_alumno
 ):
     materia = Materia(
         nombre="Matematica"
@@ -1914,7 +1913,7 @@ def test_alumno_puede_ver_sus_calificaciones(
     db.commit()
 
     response = client.get(
-        f"/calificaciones/alumno/{usuario_alumno.id}"
+        f"/calificaciones/alumno/{usuario_alumno.id}", headers=auth_headers_alumno
     )
 
     assert response.status_code == 200
@@ -1923,7 +1922,7 @@ def test_alumno_puede_ver_sus_calificaciones(
 def test_alumno_puede_ver_sus_mis_calificaciones(
     client,
     db,
-    usuario_alumno
+    usuario_alumno, auth_headers_alumno
 ):
     materia = Materia(
         nombre="Matematica"
@@ -1946,7 +1945,7 @@ def test_alumno_puede_ver_sus_mis_calificaciones(
     db.refresh(calificacion)
 
     response = client.get(
-        "/calificaciones/alumno/mis-calificaciones"
+        "/calificaciones/alumno/mis-calificaciones", headers=auth_headers_alumno
     )
 
     assert response.status_code == 200
@@ -1961,10 +1960,10 @@ def test_alumno_puede_ver_sus_mis_calificaciones(
 
 def test_maestro_no_puede_ver_mis_calificaciones(
     client,
-    usuario_maestro
+    usuario_maestro, auth_headers_maestro
 ):
     response = client.get(
-        "/calificaciones/alumno/mis-calificaciones"
+        "/calificaciones/alumno/mis-calificaciones", headers=auth_headers_maestro
     )
 
     assert response.status_code == 403
@@ -1974,7 +1973,7 @@ def test_maestro_no_puede_ver_mis_calificaciones(
 def test_alumno_puede_ver_mi_promedio(
     client,
     db,
-    usuario_alumno
+    usuario_alumno, auth_headers_alumno
 ):
     materia = Materia(
         nombre="Matematica"
@@ -2004,7 +2003,7 @@ def test_alumno_puede_ver_mi_promedio(
     db.commit()
 
     response = client.get(
-        "/calificaciones/alumno/mi-promedio"
+        "/calificaciones/alumno/mi-promedio", headers=auth_headers_alumno
     )
 
     assert response.status_code == 200
@@ -2018,7 +2017,7 @@ def test_alumno_puede_ver_mi_promedio(
 def test_alumno_sin_calificaciones_no_puede_ver_promedio(
     client,
     db,
-    usuario_alumno
+    usuario_alumno, auth_headers_alumno
 ):
     materia = Materia(
         nombre="Matematica"
@@ -2037,7 +2036,7 @@ def test_alumno_sin_calificaciones_no_puede_ver_promedio(
     db.commit()
 
     response = client.get(
-        "/calificaciones/alumno/mi-promedio"
+        "/calificaciones/alumno/mi-promedio", headers=auth_headers_alumno
     )
 
     assert response.status_code == 404
@@ -2053,10 +2052,10 @@ def test_alumno_sin_calificaciones_no_puede_ver_promedio(
 
 def test_maestro_no_puede_ver_mi_promedio(
     client,
-    usuario_maestro
+    usuario_maestro, auth_headers_maestro
 ):
     response = client.get(
-        "/calificaciones/alumno/mi-promedio"
+        "/calificaciones/alumno/mi-promedio", headers=auth_headers_maestro
     )
 
     assert response.status_code == 403
@@ -2065,7 +2064,7 @@ def test_maestro_no_puede_ver_mi_promedio(
 def test_alumno_puede_ver_mis_estadisticas(
     client,
     db,
-    usuario_alumno
+    usuario_alumno, auth_headers_alumno
 ):
     materia = Materia(
         nombre="Matematica"
@@ -2099,7 +2098,7 @@ def test_alumno_puede_ver_mis_estadisticas(
     db.commit()
 
     response = client.get(
-        "/calificaciones/alumno/mi-estadisticas"
+        "/calificaciones/alumno/mi-estadisticas", headers=auth_headers_alumno
     )
 
     assert response.status_code == 200
@@ -2120,10 +2119,10 @@ def test_alumno_puede_ver_mis_estadisticas(
 
 def test_maestro_no_puede_ver_mis_estadisticas(
     client,
-    usuario_maestro
+    usuario_maestro, auth_headers_maestro
 ):
     response = client.get(
-        "/calificaciones/alumno/mi-estadisticas"
+        "/calificaciones/alumno/mi-estadisticas", headers=auth_headers_maestro
     )
 
     assert response.status_code == 403
@@ -2136,7 +2135,7 @@ def test_maestro_no_puede_ver_mis_estadisticas(
 def test_maestro_puede_ver_calificacion_de_su_materia(
     db,
     client,
-    usuario_maestro
+    usuario_maestro, auth_headers_maestro
 ):
     alumno = Alumno(
         nombre="Pedro",
@@ -2167,7 +2166,7 @@ def test_maestro_puede_ver_calificacion_de_su_materia(
     db.refresh(calificacion)
 
     response = client.get(
-        f"/calificaciones/{calificacion.id}"
+        f"/calificaciones/{calificacion.id}", headers=auth_headers_maestro
     )
 
     assert response.status_code == 200
@@ -2176,7 +2175,7 @@ def test_maestro_puede_ver_calificacion_de_su_materia(
 def test_maestro_no_puede_ver_calificacion_de_otro_maestro(
     db,
     client,
-    usuario_maestro
+    usuario_maestro, auth_headers_maestro
 ):
     otro_maestro = Usuario(
         nombre="Pedro",
@@ -2219,7 +2218,7 @@ def test_maestro_no_puede_ver_calificacion_de_otro_maestro(
     db.refresh(calificacion)
 
     response = client.get(
-        f"/calificaciones/{calificacion.id}"
+        f"/calificaciones/{calificacion.id}", headers=auth_headers_maestro
     )
 
     assert response.status_code == 403
@@ -2228,7 +2227,7 @@ def test_maestro_no_puede_ver_calificacion_de_otro_maestro(
 def test_maestro_solo_ve_sus_calificaciones_de_un_alumno(
     db,
     client,
-    usuario_maestro
+    usuario_maestro, auth_headers_maestro
 ):
     otro_maestro = Usuario(
         nombre="Pedro",
@@ -2284,7 +2283,7 @@ def test_maestro_solo_ve_sus_calificaciones_de_un_alumno(
     db.commit()
 
     response = client.get(
-        f"/calificaciones/alumno/{alumno.id}"
+        f"/calificaciones/alumno/{alumno.id}", headers=auth_headers_maestro
     )
 
     assert response.status_code == 200
@@ -2299,7 +2298,7 @@ def test_maestro_solo_ve_sus_calificaciones_de_un_alumno(
 def test_maestro_puede_ver_estadisticas_de_alumno_en_su_materia(
     db,
     client,
-    usuario_maestro
+    usuario_maestro, auth_headers_maestro
 ):
     alumno = Alumno(
         nombre="Pedro",
@@ -2339,7 +2338,7 @@ def test_maestro_puede_ver_estadisticas_de_alumno_en_su_materia(
     db.commit()
 
     response = client.get(
-        f"/calificaciones/alumno/{alumno.id}/estadisticas"
+        f"/calificaciones/alumno/{alumno.id}/estadisticas", headers=auth_headers_maestro
     )
 
     assert response.status_code == 200
@@ -2361,7 +2360,7 @@ def test_maestro_puede_ver_estadisticas_de_alumno_en_su_materia(
 def test_maestro_no_puede_ver_estadisticas_de_materia_de_otro_maestro(
     db,
     client,
-    usuario_maestro
+    usuario_maestro, auth_headers_maestro
 ):
     otro_maestro = Usuario(
         nombre="Pedro",
@@ -2403,7 +2402,7 @@ def test_maestro_no_puede_ver_estadisticas_de_materia_de_otro_maestro(
     db.commit()
 
     response = client.get(
-        f"/calificaciones/alumno/{alumno.id}/estadisticas"
+        f"/calificaciones/alumno/{alumno.id}/estadisticas", headers=auth_headers_maestro
     )
 
     assert response.status_code == 404
@@ -2416,7 +2415,7 @@ def test_maestro_no_puede_ver_estadisticas_de_materia_de_otro_maestro(
 def test_maestro_no_puede_crear_calificacion_en_materia_de_otro_maestro(
     db,
     client,
-    usuario_maestro
+    usuario_maestro, auth_headers_maestro
 ):
     otro_maestro = Usuario(
         nombre="Pedro",
@@ -2460,7 +2459,7 @@ def test_maestro_no_puede_crear_calificacion_en_materia_de_otro_maestro(
             "materia_id": materia.id,
             "nota": 8,
             "periodo": 1
-        }
+        }, headers=auth_headers_maestro
     )
 
     assert response.status_code == 403
@@ -2471,7 +2470,7 @@ def test_maestro_no_puede_crear_calificacion_en_materia_de_otro_maestro(
 def test_maestro_puede_crear_calificacion_en_materia_propia(
     db,
     client,
-    usuario_maestro
+    usuario_maestro, auth_headers_maestro
 ):
     materia = Materia(
         nombre="Matematica",
@@ -2507,11 +2506,10 @@ def test_maestro_puede_crear_calificacion_en_materia_propia(
             "materia_id": materia.id,
             "nota": 8,
             "periodo": 1
-        }
+        }, headers=auth_headers_maestro
     )
 
     assert response.status_code == 201
-
 
 
 def test_maestro_puede_ver_sus_mis_calificaciones(
@@ -2521,15 +2519,17 @@ def test_maestro_puede_ver_sus_mis_calificaciones(
     maestro = Usuario(
         nombre="Carlos",
         email="carlos@test.com",
-        password_hash="hash",
-        rol=Rol.MAESTRO
+        password_hash=hash_password("123456"),
+        rol=Rol.MAESTRO,
+        activo=True
     )
 
     otro_maestro = Usuario(
         nombre="Pedro",
         email="pedro@test.com",
-        password_hash="hash",
-        rol=Rol.MAESTRO
+        password_hash=hash_password("123456"),
+        rol=Rol.MAESTRO,
+        activo=True
     )
 
     db.add_all([
@@ -2563,8 +2563,18 @@ def test_maestro_puede_ver_sus_mis_calificaciones(
     ])
     db.commit()
 
-    asegurar_inscripcion(db, alumno.id, materia_propia.id)
-    asegurar_inscripcion(db, alumno.id, materia_ajena.id)
+    asegurar_inscripcion(
+        db,
+        alumno.id,
+        materia_propia.id
+    )
+
+    asegurar_inscripcion(
+        db,
+        alumno.id,
+        materia_ajena.id
+    )
+
     db.add_all([
         Calificacion(
             alumno_id=alumno.id,
@@ -2582,23 +2592,25 @@ def test_maestro_puede_ver_sus_mis_calificaciones(
 
     db.commit()
 
-    def usuario_maestro_override():
-        return {
-            "id": maestro.id,
-            "rol": Rol.MAESTRO
+    login_response = client.post(
+        "/auth/login",
+        json={
+            "email": maestro.email,
+            "password": "123456"
         }
-
-    app.dependency_overrides[
-        get_usuario_actual
-    ] = usuario_maestro_override
-
-    response = client.get(
-        "/calificaciones/maestro/mis-calificaciones"
     )
 
-    app.dependency_overrides.pop(
-        get_usuario_actual,
-        None
+    assert login_response.status_code == 200
+
+    token = login_response.json()["access_token"]
+
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+
+    response = client.get(
+        "/calificaciones/maestro/mis-calificaciones",
+        headers=headers
     )
 
     assert response.status_code == 200
@@ -2618,31 +2630,34 @@ def test_maestro_sin_materias_obtiene_lista_vacia(
     maestro = Usuario(
         nombre="Carlos",
         email="carlos@test.com",
-        password_hash="hash",
-        rol=Rol.MAESTRO
+        password_hash=hash_password("123456"),
+        rol=Rol.MAESTRO,
+        activo=True
     )
 
     db.add(maestro)
     db.commit()
     db.refresh(maestro)
 
-    def usuario_maestro_override():
-        return {
-            "id": maestro.id,
-            "rol": Rol.MAESTRO
+    login_response = client.post(
+        "/auth/login",
+        json={
+            "email": maestro.email,
+            "password": "123456"
         }
-
-    app.dependency_overrides[
-        get_usuario_actual
-    ] = usuario_maestro_override
-
-    response = client.get(
-        "/calificaciones/maestro/mis-calificaciones"
     )
 
-    app.dependency_overrides.pop(
-        get_usuario_actual,
-        None
+    assert login_response.status_code == 200
+
+    token = login_response.json()["access_token"]
+
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+
+    response = client.get(
+        "/calificaciones/maestro/mis-calificaciones",
+        headers=headers
     )
 
     assert response.status_code == 200
@@ -2666,33 +2681,35 @@ def test_alumno_no_puede_ver_calificaciones_del_maestro(
     usuario = Usuario(
         nombre="Juan",
         email="juan@test.com",
-        password_hash="hash",
+        password_hash=hash_password("123456"),
         rol=Rol.ALUMNO,
-        alumno_id=alumno.id
+        alumno_id=alumno.id,
+        activo=True
     )
 
     db.add(usuario)
     db.commit()
     db.refresh(usuario)
 
-    def usuario_alumno_override():
-        return {
-            "id": usuario.id,
-            "rol": Rol.ALUMNO,
-            "alumno_id": alumno.id
+    login_response = client.post(
+        "/auth/login",
+        json={
+            "email": usuario.email,
+            "password": "123456"
         }
-
-    app.dependency_overrides[
-        get_usuario_actual
-    ] = usuario_alumno_override
-
-    response = client.get(
-        "/calificaciones/maestro/mis-calificaciones"
     )
 
-    app.dependency_overrides.pop(
-        get_usuario_actual,
-        None
+    assert login_response.status_code == 200
+
+    token = login_response.json()["access_token"]
+
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+
+    response = client.get(
+        "/calificaciones/maestro/mis-calificaciones",
+        headers=headers
     )
 
     assert response.status_code == 403
@@ -2705,7 +2722,7 @@ def test_alumno_no_puede_ver_calificaciones_del_maestro(
 def test_modificar_calificacion_a_otra_materia_suya(
     db,
     client,
-    usuario_maestro
+    usuario_maestro, auth_headers_maestro
 ):
     alumno = Alumno(
         nombre="Kevin",
@@ -2747,7 +2764,7 @@ def test_modificar_calificacion_a_otra_materia_suya(
 
     response = client.patch(
         f"/calificaciones/{calificacion.id}",
-        json={"materia_id": otra_materia.id}
+        json={"materia_id": otra_materia.id}, headers=auth_headers_maestro
     )
 
     assert response.status_code == 403
@@ -2756,7 +2773,7 @@ def test_modificar_calificacion_a_otra_materia_suya(
 def test_modificar_calificacion_de_materia_sin_maestro(
     db,
     client,
-    usuario_maestro
+    usuario_maestro, auth_headers_maestro
 ):
     alumno = Alumno(
         nombre="Kevin",
@@ -2790,7 +2807,7 @@ def test_modificar_calificacion_de_materia_sin_maestro(
 
     response = client.patch(
         f"/calificaciones/{calificacion.id}",
-        json={"nota": 9}
+        json={"nota": 9}, headers=auth_headers_maestro
     )
 
     assert response.status_code == 403
@@ -2806,7 +2823,7 @@ def test_modificar_calificacion_de_materia_sin_maestro(
 def test_eliminar_calificacion_maestro_materia_sin_maestro(
     client,
     db,
-    usuario_maestro
+    usuario_maestro, auth_headers_maestro
 ):
     alumno = Alumno(
         nombre="Juan",
@@ -2842,7 +2859,7 @@ def test_eliminar_calificacion_maestro_materia_sin_maestro(
     calificacion_id = calificacion.id
 
     response = client.delete(
-        f"/calificaciones/{calificacion_id}"
+        f"/calificaciones/{calificacion_id}", headers=auth_headers_maestro
     )
 
     assert response.status_code == 403
@@ -2859,7 +2876,7 @@ def test_eliminar_calificacion_maestro_materia_sin_maestro(
 def test_admin_puede_ver_todas_las_calificaciones(
     db,
     client,
-    usuario_admin
+    usuario_admin, auth_headers_admin
 ):
     alumno1 = Alumno(
         nombre="Carlos",
@@ -2904,7 +2921,7 @@ def test_admin_puede_ver_todas_las_calificaciones(
     db.commit()
 
     response = client.get(
-        "/calificaciones/"
+        "/calificaciones/", headers=auth_headers_admin
     )
 
     assert response.status_code == 200
@@ -2914,7 +2931,7 @@ def test_admin_puede_ver_todas_las_calificaciones(
 def test_admin_puede_ver_detalle_de_todas_las_calificaciones(
     db,
     client,
-    usuario_admin
+    usuario_admin, auth_headers_admin
 ):
     alumno = Alumno(
         nombre="Carlos",
@@ -2945,7 +2962,7 @@ def test_admin_puede_ver_detalle_de_todas_las_calificaciones(
     db.commit()
 
     response = client.get(
-        "/calificaciones/detalle"
+        "/calificaciones/detalle", headers=auth_headers_admin
     )
 
     assert response.status_code == 200
@@ -2963,7 +2980,7 @@ def test_admin_puede_ver_detalle_de_todas_las_calificaciones(
 def test_admin_puede_crear_calificacion_en_cualquier_materia(
     db,
     client,
-    usuario_admin
+    usuario_admin, auth_headers_admin
 ):
     otro_maestro = Usuario(
         nombre="Pedro",
@@ -3007,7 +3024,7 @@ def test_admin_puede_crear_calificacion_en_cualquier_materia(
             "materia_id": materia.id,
             "nota": 8,
             "periodo": 1
-        }
+        }, headers=auth_headers_admin
     )
 
     assert response.status_code == 201
@@ -3017,7 +3034,7 @@ def test_admin_puede_crear_calificacion_en_cualquier_materia(
 def test_admin_puede_modificar_cualquier_calificacion(
     db,
     client,
-    usuario_admin
+    usuario_admin, auth_headers_admin
 ):
     otro_maestro = Usuario(
         nombre="Pedro",
@@ -3060,7 +3077,7 @@ def test_admin_puede_modificar_cualquier_calificacion(
 
     response = client.patch(
         f"/calificaciones/{calificacion.id}",
-        json={"nota": 9}
+        json={"nota": 9}, headers=auth_headers_admin
     )
 
     assert response.status_code == 200
@@ -3070,7 +3087,7 @@ def test_admin_puede_modificar_cualquier_calificacion(
 def test_admin_puede_eliminar_cualquier_calificacion(
     db,
     client,
-    usuario_admin
+    usuario_admin, auth_headers_admin
 ):
     otro_maestro = Usuario(
         nombre="Pedro",
@@ -3114,7 +3131,7 @@ def test_admin_puede_eliminar_cualquier_calificacion(
     calificacion_id = calificacion.id
 
     response = client.delete(
-        f"/calificaciones/{calificacion_id}"
+        f"/calificaciones/{calificacion_id}", headers=auth_headers_admin
     )
 
     assert response.status_code == 204
@@ -3159,11 +3176,18 @@ def test_alumno_puede_ver_su_propia_calificacion(db):
     db.commit()
     db.refresh(calificacion)
 
-    usuario = {
-        "id": 1,
-        "rol": Rol.ALUMNO,
-        "alumno_id": alumno.id
-    }
+    usuario = Usuario(
+        nombre="Juan",
+        email="juan@test.com",
+        password_hash=hash_password("123456"),
+        rol=Rol.ALUMNO,
+        alumno_id=alumno.id,
+        activo=True,
+    )
+
+    db.add(usuario)
+    db.commit()
+    db.refresh(usuario)
 
     resultado, error = buscar_calificaciones(
         db,
@@ -3184,7 +3208,7 @@ def test_alumno_puede_ver_su_propia_calificacion(db):
 def test_maestro_no_puede_cambiar_alumno_de_una_calificacion(
     client,
     db,
-    usuario_maestro,
+    usuario_maestro, auth_headers_maestro,
 ):
     alumno_original = Alumno(
         nombre="Juan",
@@ -3228,7 +3252,7 @@ def test_maestro_no_puede_cambiar_alumno_de_una_calificacion(
         f"/calificaciones/{calificacion.id}",
         json={
             "alumno_id": alumno_nuevo.id,
-        },
+        }, headers=auth_headers_maestro,
     )
 
     assert response.status_code == 403

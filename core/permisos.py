@@ -53,7 +53,7 @@ def tiene_permiso(rol, permiso):
 def requiere_permiso(permiso):
 
     def verificar(usuario=Depends(get_usuario_actual)):
-        tiene = tiene_permiso(usuario["rol"], permiso)
+        tiene = tiene_permiso(usuario.rol, permiso)
 
         if not tiene:
             raise HTTPException(
@@ -66,8 +66,6 @@ def requiere_permiso(permiso):
     return verificar
 
 
-
-
 def requiere_permiso_calificaciones(
     usuario=Depends(get_usuario_actual)
 ):
@@ -77,9 +75,9 @@ def requiere_permiso_calificaciones(
         Rol.ALUMNO: Permiso.VER_MIS_CALIFICACIONES,
     }
 
-    permiso = permisos.get(usuario["rol"])
+    permiso = permisos.get(usuario.rol)
 
-    if permiso is None or not tiene_permiso(usuario["rol"], permiso):
+    if permiso is None or not tiene_permiso(usuario.rol, permiso):
         raise HTTPException(
             status_code=403,
             detail="No tiene permiso para realizar esta acción"

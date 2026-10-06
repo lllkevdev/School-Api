@@ -3,25 +3,29 @@ from models.materia import Materia
 from models.inscripcion import Inscripcion
 
 
-def test_crear_inscripcion(client):
+def test_crear_inscripcion(client, auth_headers_admin):
     alumno = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        },
+        headers=auth_headers_admin
     )
 
+    assert alumno.status_code == 201
     alumno_id = alumno.json()["id"]
 
     materia = client.post(
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        },
+        headers=auth_headers_admin
     )
 
+    assert materia.status_code == 201
     materia_id = materia.json()["id"]
 
     response = client.post(
@@ -29,7 +33,8 @@ def test_crear_inscripcion(client):
         json={
             "alumno_id": alumno_id,
             "materia_id": materia_id,
-        }
+        },
+        headers=auth_headers_admin
     )
 
     assert response.status_code == 201
@@ -40,17 +45,19 @@ def test_crear_inscripcion(client):
     assert data["materia_id"] == materia_id
 
 
-
-
-
-def test_crear_inscripcion_alumno_inexistente(client):
+def test_crear_inscripcion_alumno_inexistente(
+    client,
+    auth_headers_admin
+):
     materia = client.post(
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        },
+        headers=auth_headers_admin
     )
 
+    assert materia.status_code == 201
     materia_id = materia.json()["id"]
 
     response = client.post(
@@ -58,24 +65,28 @@ def test_crear_inscripcion_alumno_inexistente(client):
         json={
             "alumno_id": 999999,
             "materia_id": materia_id,
-        }
+        },
+        headers=auth_headers_admin
     )
 
     assert response.status_code == 404
 
 
-
-
-def test_crear_inscripcion_materia_inexistente(client):
+def test_crear_inscripcion_materia_inexistente(
+    client,
+    auth_headers_admin
+):
     alumno = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        },
+        headers=auth_headers_admin
     )
 
+    assert alumno.status_code == 201
     alumno_id = alumno.json()["id"]
 
     response = client.post(
@@ -83,32 +94,39 @@ def test_crear_inscripcion_materia_inexistente(client):
         json={
             "alumno_id": alumno_id,
             "materia_id": 999999,
-        }
+        },
+        headers=auth_headers_admin
     )
 
     assert response.status_code == 404
 
 
-
-def test_crear_inscripcion_duplicada(client):
+def test_crear_inscripcion_duplicada(
+    client,
+    auth_headers_admin
+):
     alumno = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        },
+        headers=auth_headers_admin
     )
 
+    assert alumno.status_code == 201
     alumno_id = alumno.json()["id"]
 
     materia = client.post(
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        },
+        headers=auth_headers_admin
     )
 
+    assert materia.status_code == 201
     materia_id = materia.json()["id"]
 
     primera = client.post(
@@ -116,7 +134,8 @@ def test_crear_inscripcion_duplicada(client):
         json={
             "alumno_id": alumno_id,
             "materia_id": materia_id,
-        }
+        },
+        headers=auth_headers_admin
     )
 
     assert primera.status_code == 201
@@ -126,17 +145,20 @@ def test_crear_inscripcion_duplicada(client):
         json={
             "alumno_id": alumno_id,
             "materia_id": materia_id,
-        }
+        },
+        headers=auth_headers_admin
     )
 
     assert segunda.status_code == 409
-    assert segunda.json()["detail"] == "El alumno ya esta inscripto en la materia"  
+    assert segunda.json()["detail"] == (
+        "El alumno ya esta inscripto en la materia"
+    )
 
 
 def test_crear_inscripcion_sin_permiso_maestro(
     client,
     db,
-    usuario_maestro,
+    auth_headers_maestro,
 ):
     alumno = Alumno(
         nombre="Juan",
@@ -158,33 +180,40 @@ def test_crear_inscripcion_sin_permiso_maestro(
         json={
             "alumno_id": alumno.id,
             "materia_id": materia.id,
-        }
+        },
+        headers=auth_headers_maestro
     )
 
     assert response.status_code == 403
 
 
-
-
-def test_eliminar_inscripcion(client, db):
+def test_eliminar_inscripcion(
+    client,
+    db,
+    auth_headers_admin
+):
     alumno = client.post(
         "/alumnos/",
         json={
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        },
+        headers=auth_headers_admin
     )
 
+    assert alumno.status_code == 201
     alumno_id = alumno.json()["id"]
 
     materia = client.post(
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        },
+        headers=auth_headers_admin
     )
 
+    assert materia.status_code == 201
     materia_id = materia.json()["id"]
 
     response = client.post(
@@ -192,7 +221,8 @@ def test_eliminar_inscripcion(client, db):
         json={
             "alumno_id": alumno_id,
             "materia_id": materia_id,
-        }
+        },
+        headers=auth_headers_admin
     )
 
     assert response.status_code == 201
@@ -207,17 +237,17 @@ def test_eliminar_inscripcion(client, db):
     inscripcion_id = inscripcion.id
 
     response = client.delete(
-        f"/inscripciones/{inscripcion_id}"
+        f"/inscripciones/{inscripcion_id}",
+        headers=auth_headers_admin
     )
 
     assert response.status_code == 204
 
 
-
-
 def test_eliminar_inscripcion_elimina_calificacion(
     client_fk,
     db_fk,
+    auth_headers_admin,
 ):
     alumno = client_fk.post(
         "/alumnos/",
@@ -225,18 +255,22 @@ def test_eliminar_inscripcion_elimina_calificacion(
             "nombre": "Juan",
             "apellido": "Pérez",
             "edad": 20,
-        }
+        },
+        headers=auth_headers_admin
     )
 
+    assert alumno.status_code == 201
     alumno_id = alumno.json()["id"]
 
     materia = client_fk.post(
         "/materias/",
         json={
             "nombre": "Matemáticas",
-        }
+        },
+        headers=auth_headers_admin
     )
 
+    assert materia.status_code == 201
     materia_id = materia.json()["id"]
 
     inscripcion = client_fk.post(
@@ -244,7 +278,8 @@ def test_eliminar_inscripcion_elimina_calificacion(
         json={
             "alumno_id": alumno_id,
             "materia_id": materia_id,
-        }
+        },
+        headers=auth_headers_admin
     )
 
     assert inscripcion.status_code == 201
@@ -256,7 +291,8 @@ def test_eliminar_inscripcion_elimina_calificacion(
             "materia_id": materia_id,
             "nota": 8.5,
             "periodo": 2,
-        }
+        },
+        headers=auth_headers_admin
     )
 
     assert response.status_code == 201
@@ -271,13 +307,15 @@ def test_eliminar_inscripcion_elimina_calificacion(
     assert inscripcion_db is not None
 
     response = client_fk.delete(
-        f"/inscripciones/{inscripcion_db.id}"
+        f"/inscripciones/{inscripcion_db.id}",
+        headers=auth_headers_admin
     )
 
     assert response.status_code == 204
 
     response = client_fk.get(
-        f"/calificaciones/{calificacion_id}"
+        f"/calificaciones/{calificacion_id}",
+        headers=auth_headers_admin
     )
 
     assert response.status_code == 404
@@ -286,7 +324,7 @@ def test_eliminar_inscripcion_elimina_calificacion(
 def test_eliminar_inscripcion_sin_permiso_maestro(
     client,
     db,
-    usuario_maestro,
+    auth_headers_maestro,
 ):
     alumno = Alumno(
         nombre="Juan",
@@ -313,20 +351,21 @@ def test_eliminar_inscripcion_sin_permiso_maestro(
     db.refresh(inscripcion)
 
     response = client.delete(
-        f"/inscripciones/{inscripcion.id}"
+        f"/inscripciones/{inscripcion.id}",
+        headers=auth_headers_maestro
     )
 
     assert response.status_code == 403
-
 
 
 def test_eliminar_inscripcion_sin_permiso_alumno(
     client,
     db,
     usuario_alumno,
+    auth_headers_alumno,
 ):
     materia = Materia(
-        nombre="Matemáticas",
+        nombre="Matemáticas"
     )
 
     db.add(materia)
@@ -345,16 +384,20 @@ def test_eliminar_inscripcion_sin_permiso_alumno(
     assert inscripcion is not None
 
     response = client.delete(
-        f"/inscripciones/{inscripcion.id}"
+        f"/inscripciones/{inscripcion.id}",
+        headers=auth_headers_alumno
     )
 
     assert response.status_code == 403
 
 
-
-def test_eliminar_inscripcion_inexistente(client):
+def test_eliminar_inscripcion_inexistente(
+    client,
+    auth_headers_admin,
+):
     response = client.delete(
-        "/inscripciones/999999"
+        "/inscripciones/999999",
+        headers=auth_headers_admin
     )
 
     assert response.status_code == 404

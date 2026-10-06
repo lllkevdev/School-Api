@@ -12,7 +12,7 @@ from models.calificacion import Calificacion
 from models.usuario import Usuario
 from models.inscripcion import Inscripcion
 from app.main import app
-from core.dependencies import get_usuario_actual
+from core.security import hash_password
 from schemas.roles import Rol
 
 # URL de la base de tests: configurable por entorno, con fallback a SQLite local
@@ -67,7 +67,6 @@ def limpiar_db(db):
     db.commit()
 
 
-
 @pytest.fixture
 def db():
     db = TestingSessionLocal()
@@ -77,7 +76,6 @@ def db():
     finally:
         limpiar_db(db)
         db.close()
-
 
 
 @pytest.fixture
@@ -120,7 +118,6 @@ def client_fk(db_fk):
     app.dependency_overrides.pop(get_db, None)
 
 
-
 @pytest.fixture
 def client(db):
     def obtener_db():
@@ -133,22 +130,40 @@ def client(db):
     app.dependency_overrides.pop(get_db, None)
 
 
+@pytest.fixture()
+def usuario_admin(db):
+    usuario = Usuario(
+        nombre="Admin",
+        email="admin@test.com",
+        password_hash=hash_password("123456"),
+        rol=Rol.ADMIN,
+        activo=True
+    )
+
+    db.add(usuario)
+    db.commit()
+    db.refresh(usuario)
+
+    yield usuario
 
 
 @pytest.fixture()
-def usuario_admin():
-    def usuario_admin_override():
-        return {
-            "rol": Rol.ADMIN
+def auth_headers_admin(client, usuario_admin):
+    response = client.post(
+        "/auth/login",
+        json={
+            "email": usuario_admin.email,
+            "password": "123456"
         }
+    )
 
-    app.dependency_overrides[get_usuario_actual] = usuario_admin_override
+    assert response.status_code == 200
 
-    yield 
+    token = response.json()["access_token"]
 
-    app.dependency_overrides.clear()
-
-
+    return {
+        "Authorization": f"Bearer {token}"
+    }
 
 
 @pytest.fixture()
@@ -156,28 +171,35 @@ def usuario_maestro(db):
     maestro = Usuario(
         nombre="Juan",
         email="juan@test.com",
-        password_hash="hash",
-        rol=Rol.MAESTRO
+        password_hash=hash_password("123456"),
+        rol=Rol.MAESTRO,
+        activo=True
     )
 
     db.add(maestro)
     db.commit()
     db.refresh(maestro)
 
-    def usuario_maestro_override():
-        return {
-            "rol": Rol.MAESTRO,
-            "id": maestro.id
-        }
-
-    app.dependency_overrides[get_usuario_actual] = usuario_maestro_override
-
     yield maestro
 
-    app.dependency_overrides.clear()
 
+@pytest.fixture()
+def auth_headers_maestro(client, usuario_maestro):
+    response = client.post(
+        "/auth/login",
+        json={
+            "email": usuario_maestro.email,
+            "password": "123456"
+        }
+    )
 
+    assert response.status_code == 200
 
+    token = response.json()["access_token"]
+
+    return {
+        "Authorization": f"Bearer {token}"
+    }
 
 
 @pytest.fixture()
@@ -194,25 +216,34 @@ def usuario_alumno(db):
 
     usuario = Usuario(
         nombre="Juan",
-        email="juan@test.com",
-        password_hash="hash",
+        email="juan.alumno@test.com",
+        password_hash=hash_password("123456"),
         rol=Rol.ALUMNO,
-        alumno_id=alumno.id
+        alumno_id=alumno.id,
+        activo=True
     )
 
     db.add(usuario)
     db.commit()
     db.refresh(usuario)
 
-    def usuario_alumno_override():
-        return {
-            "rol": Rol.ALUMNO,
-            "id": usuario.id,
-            "alumno_id": alumno.id
-        }
-
-    app.dependency_overrides[get_usuario_actual] = usuario_alumno_override
-
     yield alumno
 
-    app.dependency_overrides.clear()
+
+@pytest.fixture()
+def auth_headers_alumno(client, usuario_alumno):
+    response = client.post(
+        "/auth/login",
+        json={
+            "email": "juan.alumno@test.com",
+            "password": "123456"
+        }
+    )
+
+    assert response.status_code == 200
+
+    token = response.json()["access_token"]
+
+    return {
+        "Authorization": f"Bearer {token}"
+    }

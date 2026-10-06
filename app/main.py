@@ -5,6 +5,7 @@ from routers.alumno import router as alumno_router
 from routers.materia import router as materia_router
 from routers.calificacion import router as calificacion_router
 from routers.inscripciones import router as inscripcion_router
+from routers.auth import router as auth_router
 
 
 app = FastAPI(
@@ -26,6 +27,7 @@ app.include_router(alumno_router)
 app.include_router(materia_router)
 app.include_router(calificacion_router)
 app.include_router(inscripcion_router)
+app.include_router(auth_router)
 
 
 @app.get("/")

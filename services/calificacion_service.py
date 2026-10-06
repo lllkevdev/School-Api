@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, case
 from sqlalchemy.exc import IntegrityError
 
-
+from models.usuario import Usuario
 from models import calificacion
 from models.alumno import Alumno as AlumnoModel
 from models.materia import Materia as MateriaModel
@@ -28,7 +28,7 @@ from core.permisos import Rol
 def crear_calificacion(
     db: Session,
     calificacion: CalificacionSchema,
-    usuario: dict,
+    usuario: Usuario,
 ) -> tuple[CalificacionModel | None, str | None]:
 
     alumno = db.query(AlumnoModel).filter(
@@ -53,8 +53,8 @@ def crear_calificacion(
     if inscripcion is None:
         return None, "inscripcion_calificacion"
 
-    if usuario["rol"] == Rol.MAESTRO:
-        if usuario["id"] != materia.maestro_id:
+    if usuario.rol == Rol.MAESTRO:
+        if usuario.id != materia.maestro_id:
             return None, "maestro"
 
     nueva_calificacion = CalificacionModel(
@@ -125,7 +125,7 @@ def obtener_calificaciones_detalle(
 def buscar_calificaciones(
     db: Session,
     calificacion_id: int,
-    usuario,
+    usuario: Usuario,
 ) -> tuple[CalificacionModel | None, str | None]:
 
     calificacion = db.query(CalificacionModel).filter(
@@ -135,12 +135,12 @@ def buscar_calificaciones(
     if calificacion is None:
         return None, "calificacion"
 
-    if usuario["rol"] == Rol.MAESTRO:
-        if usuario["id"] != calificacion.materia.maestro_id:
+    if usuario.rol == Rol.MAESTRO:
+        if usuario.id != calificacion.materia.maestro_id:
             return None, "permiso"
 
-    if usuario["rol"] == Rol.ALUMNO:
-        if usuario["alumno_id"] != calificacion.alumno_id:
+    if usuario.rol == Rol.ALUMNO:
+        if usuario.alumno_id != calificacion.alumno_id:
             return None, "permiso"
 
     return calificacion, None
@@ -197,7 +197,7 @@ def _to_calificacion_alumno(
 def obtener_calificaciones_alumno(
     db: Session,
     alumno_id: int,
-    usuario: dict,
+    usuario: Usuario,
     periodo: int | None = None,
 ) -> tuple[list[CalificacionAlumno] | None, str | None]:
 
@@ -208,8 +208,8 @@ def obtener_calificaciones_alumno(
     if alumno is None:
         return None, "alumno_calificacion"
 
-    if usuario["rol"] == Rol.ALUMNO:
-        if usuario["alumno_id"] != alumno_id:
+    if usuario.rol == Rol.ALUMNO:
+        if usuario.alumno_id != alumno_id:
             return None, "permiso"
 
     calificaciones = (
@@ -233,8 +233,8 @@ def obtener_calificaciones_alumno(
 
     for calificacion in calificaciones:
 
-        if usuario["rol"] == Rol.MAESTRO:
-            if calificacion.materia.maestro_id != usuario["id"]:
+        if usuario.rol == Rol.MAESTRO:
+            if calificacion.materia.maestro_id != usuario.id:
                 continue
 
         resultado.append(
@@ -250,7 +250,7 @@ def obtener_calificaciones_alumno(
 def obtener_promedio_alumno(
     db: Session,
     alumno_id: int,
-    usuario: dict,
+    usuario: Usuario,
 ) -> tuple[PromedioAlumno | None, str | None]:
 
     alumno, error = _buscar_alumno_o_error(
@@ -267,7 +267,7 @@ def obtener_promedio_alumno(
         alumno_id,
     )
 
-    if usuario["rol"] == Rol.ALUMNO:
+    if usuario.rol == Rol.ALUMNO:
         consulta = consulta.join(
             InscripcionModel,
             InscripcionModel.materia_id == CalificacionModel.materia_id,
@@ -293,7 +293,7 @@ def obtener_promedio_alumno(
 def obtener_estadisticas_alumno(
     db: Session,
     alumno_id: int,
-    usuario: dict,
+    usuario: Usuario,
 ) -> tuple[list[EstadisticasAlumno] | None, str | None]:
 
     alumno, error = _buscar_alumno_o_error(
@@ -304,8 +304,8 @@ def obtener_estadisticas_alumno(
     if error is not None:
         return None, error
 
-    if usuario["rol"] == Rol.ALUMNO:
-        if usuario["alumno_id"] != alumno_id:
+    if usuario.rol == Rol.ALUMNO:
+        if usuario.alumno_id != alumno_id:
             return None, "permiso"
 
     consulta = db.query(
@@ -346,9 +346,9 @@ def obtener_estadisticas_alumno(
         MateriaModel.nombre,
     )
 
-    if usuario["rol"] == Rol.MAESTRO:
+    if usuario.rol == Rol.MAESTRO:
         consulta = consulta.filter(
-            MateriaModel.maestro_id == usuario["id"]
+            MateriaModel.maestro_id == usuario.id
         )
 
     resultados = consulta.all()
@@ -418,7 +418,7 @@ def actualizar_calificacion(
     db: Session,
     calificacion_id: int,
     datos: CalificacionActualizar,
-    usuario,
+    usuario: Usuario,
 ) -> tuple[CalificacionModel | None, str | None]:
 
     cambios = datos.model_dump(exclude_unset=True)
@@ -431,7 +431,7 @@ def actualizar_calificacion(
         return None, "calificacion"
 
     if "alumno_id" in cambios:
-        if usuario["rol"] == Rol.MAESTRO:
+        if usuario.rol == Rol.MAESTRO:
             return None, "maestro"
 
         alumno = db.query(AlumnoModel).filter(
@@ -442,7 +442,7 @@ def actualizar_calificacion(
             return None, "alumno_calificacion"
 
     if "materia_id" in cambios:
-        if usuario["rol"] == Rol.MAESTRO:
+        if usuario.rol == Rol.MAESTRO:
             return None, "maestro"
         materia = db.query(MateriaModel).filter(
             MateriaModel.id == cambios["materia_id"]
@@ -456,8 +456,8 @@ def actualizar_calificacion(
     else:
         materia_autorizacion = calificacion.materia
 
-    if usuario["rol"] == Rol.MAESTRO:
-        if usuario["id"] != materia_autorizacion.maestro_id:
+    if usuario.rol == Rol.MAESTRO:
+        if usuario.id != materia_autorizacion.maestro_id:
             return None, "maestro"
 
     if "alumno_id" in cambios or "materia_id" in cambios:
@@ -493,7 +493,7 @@ def actualizar_calificacion(
 def eliminar_calificacion(
     db: Session,
     calificacion_id: int,
-    usuario,
+    usuario: Usuario,
 ) -> tuple[CalificacionModel | None, str | None]:
 
     calificacion = db.query(CalificacionModel).filter(
@@ -503,8 +503,8 @@ def eliminar_calificacion(
     if calificacion is None:
         return None, "calificacion"
 
-    if usuario["rol"] == Rol.MAESTRO:
-        if usuario["id"] != calificacion.materia.maestro_id:
+    if usuario.rol == Rol.MAESTRO:
+        if usuario.id != calificacion.materia.maestro_id:
             return None, "maestro"
 
     try:

@@ -76,6 +76,8 @@ from core.permisos import (
         (Rol.ALUMNO, Permiso.VER_MATERIAS, True),
     ],
 )
+
+
 def test_tiene_permiso(rol, permiso, esperado):
     assert tiene_permiso(rol, permiso) == esperado
 
@@ -88,29 +90,21 @@ def test_tiene_permiso_rol_invalido():
         )
 
 
-def test_requiere_permiso_con_permiso():
-    usuario = {
-        "rol": Rol.MAESTRO
-    }
-
+def test_requiere_permiso_con_permiso(usuario_maestro):
     verificar = requiere_permiso(
         Permiso.CREAR_CALIFICACION
     )
 
-    assert verificar(usuario) is True
+    assert verificar(usuario_maestro) is True
 
 
-def test_requiere_permiso_sin_permiso():
-    usuario = {
-        "rol": Rol.MAESTRO
-    }
-
+def test_requiere_permiso_sin_permiso(usuario_maestro):
     verificar = requiere_permiso(
         Permiso.ELIMINAR_ALUMNO
     )
 
     with pytest.raises(HTTPException) as excepcion:
-        verificar(usuario)
+        verificar(usuario_maestro)
 
     assert excepcion.value.status_code == 403
     assert excepcion.value.detail == (
