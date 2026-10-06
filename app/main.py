@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 from routers.alumno import router as alumno_router
 from routers.materia import router as materia_router
@@ -12,6 +13,15 @@ app = FastAPI(
     title="School API",
     description="API para gestionar alumnos, materias y calificaciones",
     version="1.0.0"
+)
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 

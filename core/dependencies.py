@@ -33,8 +33,13 @@ def get_usuario_actual(
     if user_id is None:
         error_to_http("no_autenticado")
 
+    try:
+        user_id = int(user_id)
+    except (TypeError, ValueError):
+        error_to_http("no_autenticado")
+
     usuario = db.scalar(
-        select(Usuario).where(Usuario.id == int(user_id))
+        select(Usuario).where(Usuario.id == user_id)
     )
 
     if usuario is None:

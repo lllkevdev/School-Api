@@ -91,12 +91,6 @@ def actualizar_materia_put(
     "/{materia_id}",
     response_model=MateriaRespuesta
 )
-
-
-@router.patch(
-    "/{materia_id}",
-    response_model=MateriaRespuesta
-)
 def actualizar_materia_patch(
     materia_id: int,
     materia: MateriaActualizarSchema,

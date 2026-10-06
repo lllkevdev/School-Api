@@ -150,3 +150,25 @@ def test_get_usuario_actual_token_sin_sub(db):
 
     assert error.value.status_code == 401
     assert error.value.detail == "No autenticado"
+
+
+def test_get_usuario_actual_token_sub_invalido(db):
+    payload = {
+        "sub": "abc",
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=30),
+    }
+
+    token = jwt.encode(
+        payload,
+        SECRET_KEY,
+        algorithm="HS256",
+    )
+
+    with pytest.raises(HTTPException) as error:
+        get_usuario_actual(
+            token=token,
+            db=db,
+        )
+
+    assert error.value.status_code == 401
+    assert error.value.detail == "No autenticado"

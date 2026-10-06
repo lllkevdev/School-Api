@@ -187,3 +187,9 @@ def test_alumno_autenticado_puede_acceder_a_mis_calificaciones(
 
     assert response.status_code == 200
     assert response.json() == []
+
+
+def test_endpoint_protegido_sin_token_recibe_401(client):
+    response = client.get("/calificaciones/")
+
+    assert response.status_code == 401
