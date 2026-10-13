@@ -1,11 +1,21 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 
+
+def normalizar_texto(valor):
+    if valor is None:
+        return None
+
+    return valor.strip().title()
 
 class Alumno(BaseModel):
     nombre: str = Field(min_length=2, max_length=100)
     apellido: str = Field(min_length=2, max_length=100)
     edad: int = Field(gt=0, lt=100)
 
+    @field_validator("nombre", "apellido", mode="before")
+    @classmethod
+    def normalizar_nombre(cls, valor):
+        return normalizar_texto(valor)
 
 class AlumnoRespuesta(Alumno):
     id: int
@@ -29,3 +39,8 @@ class AlumnoActualizar(BaseModel):
         gt=0,
         lt=100
     )
+
+    @field_validator("nombre", "apellido", mode="before")
+    @classmethod
+    def normalizar_nombre(cls, valor):
+        return normalizar_texto(valor)

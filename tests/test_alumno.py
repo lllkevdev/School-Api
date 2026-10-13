@@ -127,6 +127,40 @@ def test_crear_alumno(client, auth_headers_admin):
     assert response.json()["edad"] == 20
 
 
+
+def test_crear_alumno_normaliza_nombre_y_apellido(client, auth_headers_admin):
+    response = client.post(
+        "/alumnos/",
+        json={
+            "nombre": "  kevin  ",
+            "apellido": "  baez  ",
+            "edad": 25,
+        },
+        headers=auth_headers_admin,
+    )
+
+    assert response.status_code == 201
+    assert response.json()["nombre"] == "Kevin"
+    assert response.json()["apellido"] == "Baez"
+    assert response.json()["edad"] == 25
+
+
+
+def test_crear_alumno_rechaza_nombre_solo_espacios(client, auth_headers_admin):
+    response = client.post(
+        "/alumnos/",
+        json={
+            "nombre": "   ",
+            "apellido": "Baez",
+            "edad": 25,
+        },
+        headers=auth_headers_admin,
+    )
+
+    assert response.status_code == 422
+
+
+
 def test_obtener_alumno_por_id(
     client,
     auth_headers_admin
@@ -662,3 +696,96 @@ def test_eliminar_alumno_con_calificaciones_forzado(
     assert response.json() == {
         "detail": "No se puede eliminar el alumno porque tiene calificaciones asociadas"
     }
+
+
+def test_patch_alumno_normaliza_nombre_y_apellido(
+    client,
+    auth_headers_admin,
+):
+    creado = client.post(
+        "/alumnos/",
+        json={
+            "nombre": "Juan",
+            "apellido": "Perez",
+            "edad": 20,
+        },
+        headers=auth_headers_admin,
+    )
+
+    assert creado.status_code == 201
+    alumno_id = creado.json()["id"]
+
+    response = client.patch(
+        f"/alumnos/{alumno_id}",
+        json={
+            "nombre": "  kevin  ",
+            "apellido": "  baez  ",
+        },
+        headers=auth_headers_admin,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["nombre"] == "Kevin"
+    assert response.json()["apellido"] == "Baez"
+    assert response.json()["edad"] == 20
+
+
+def test_patch_alumno_rechaza_nombre_solo_espacios(
+    client,
+    auth_headers_admin,
+):
+    creado = client.post(
+        "/alumnos/",
+        json={
+            "nombre": "Juan",
+            "apellido": "Perez",
+            "edad": 20,
+        },
+        headers=auth_headers_admin,
+    )
+
+    assert creado.status_code == 201
+    alumno_id = creado.json()["id"]
+
+    response = client.patch(
+        f"/alumnos/{alumno_id}",
+        json={
+            "nombre": "   ",
+        },
+        headers=auth_headers_admin,
+    )
+
+    assert response.status_code == 422
+
+
+def test_put_alumno_normaliza_nombre_y_apellido(
+    client,
+    auth_headers_admin,
+):
+    creado = client.post(
+        "/alumnos/",
+        json={
+            "nombre": "Juan",
+            "apellido": "Perez",
+            "edad": 20,
+        },
+        headers=auth_headers_admin,
+    )
+
+    assert creado.status_code == 201
+    alumno_id = creado.json()["id"]
+
+    response = client.put(
+        f"/alumnos/{alumno_id}",
+        json={
+            "nombre": "  kevin  ",
+            "apellido": "  baez  ",
+            "edad": 25,
+        },
+        headers=auth_headers_admin,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["nombre"] == "Kevin"
+    assert response.json()["apellido"] == "Baez"
+    assert response.json()["edad"] == 25
