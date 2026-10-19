@@ -6,12 +6,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database.connection import Base
 
 
-
 if TYPE_CHECKING:
     from models.alumno import Alumno
-    from models.materia import Materia
-
-
+    from models.curso import Curso
 
 
 class Inscripcion(Base):
@@ -20,8 +17,8 @@ class Inscripcion(Base):
     __table_args__ = (
         UniqueConstraint(
             "alumno_id",
-            "materia_id",
-            name="uq_inscripcion_alumno_materia",
+            "curso_id",
+            name="uq_inscripcion_alumno_curso",
         ),
     )
 
@@ -34,15 +31,15 @@ class Inscripcion(Base):
         nullable=False,
     )
 
-    materia_id: Mapped[int] = mapped_column(
-        ForeignKey("materias.id"),
+    curso_id: Mapped[int] = mapped_column(
+        ForeignKey("cursos.id"),
         nullable=False,
     )
 
     alumno: Mapped["Alumno"] = relationship(
-        back_populates="inscripciones"
+        back_populates="inscripciones",
     )
 
-    materia: Mapped["Materia"] = relationship(
-        back_populates="inscripciones"
+    curso: Mapped["Curso"] = relationship(
+        back_populates="inscripciones",
     )

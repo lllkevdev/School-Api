@@ -22,3 +22,8 @@ class Permiso(str, Enum):
     VER_MATERIAS = "ver_materias"
     VER_MIS_CALIFICACIONES = "ver_mis_calificaciones"
     VER_CALIFICACIONES_MAESTRO = "ver_calificaciones_maestro"
+
+    CREAR_MAESTRO = "crear_maestro"
+    MODIFICAR_MAESTRO = "modificar_maestro"
+    ELIMINAR_MAESTRO = "eliminar_maestro"
+    VER_MAESTROS = "ver_maestros"

@@ -83,6 +83,18 @@ ERRORES_HTTP = {
     400,
     "Debe proporcionar al menos un campo para actualizar"
 ),
+    "maestro_no_encontrado": (
+        404,
+        "Maestro no encontrado",
+    ),
+    "curso_inscripcion": (
+        404,
+        "Curso no encontrado",
+    ),
+    "inscripcion_con_calificaciones": (
+        409,
+        "No se puede eliminar una inscipción con calificaciones asociadas",
+    ),
 }
 
 

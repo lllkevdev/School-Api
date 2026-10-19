@@ -1,26 +1,24 @@
 from typing import TYPE_CHECKING
 
-from sqlalchemy import String, CheckConstraint
+from sqlalchemy import CheckConstraint, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database.connection import Base
-
 from models.inscripcion import Inscripcion
 
 if TYPE_CHECKING:
     from models.calificacion import Calificacion
 
+
 class Alumno(Base):
     __tablename__ = "alumnos"
-
 
     __table_args__ = (
         CheckConstraint(
             "edad > 0 AND edad < 100",
-            name="ck_alumnos_edad"
+            name="ck_alumnos_edad",
         ),
     )
-
 
     id: Mapped[int] = mapped_column(
         primary_key=True,
@@ -28,20 +26,22 @@ class Alumno(Base):
 
     nombre: Mapped[str] = mapped_column(
         String(100),
-        nullable=False
+        nullable=False,
     )
 
     apellido: Mapped[str] = mapped_column(
         String(100),
-        nullable=False
+        nullable=False,
     )
 
-    edad: Mapped[int] = mapped_column(nullable=False)
+    edad: Mapped[int] = mapped_column(
+        nullable=False,
+    )
 
     calificaciones: Mapped[list["Calificacion"]] = relationship(
-        back_populates="alumno"
+        back_populates="alumno",
     )
 
     inscripciones: Mapped[list["Inscripcion"]] = relationship(
-        back_populates="alumno"
+        back_populates="alumno",
     )

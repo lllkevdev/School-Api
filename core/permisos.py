@@ -26,7 +26,12 @@ PERMISOS_POR_ROL: dict[Rol, set[Permiso]] = {
         Permiso.VER_CALIFICACION,
         Permiso.VER_TODAS_CALIFICACIONES,
         Permiso.VER_ALUMNOS,
-        Permiso.VER_MATERIAS
+        Permiso.VER_MATERIAS,
+
+        Permiso.CREAR_MAESTRO,
+        Permiso.MODIFICAR_MAESTRO,
+        Permiso.ELIMINAR_MAESTRO,
+        Permiso.VER_MAESTROS
     },
 
     Rol.MAESTRO: {

@@ -88,3 +88,57 @@ def test_autenticar_usuario_inactivo(db):
             db,
             login,
         )
+
+
+def test_usuario_inactivo_no_puede_iniciar_sesion(
+    client,
+    db,
+    usuario_maestro,
+):
+    usuario_maestro.activo = False
+    db.commit()
+
+    respuesta = client.post(
+        "/auth/login",
+        json={
+            "email": usuario_maestro.email,
+            "password": "123456",
+        },
+    )
+
+    assert respuesta.status_code == 401
+    assert "access_token" not in respuesta.json()
+
+
+def test_usuario_activo_puede_iniciar_sesion(
+    client,
+    usuario_maestro,
+):
+    respuesta = client.post(
+        "/auth/login",
+        json={
+            "email": usuario_maestro.email,
+            "password": "123456",
+        },
+    )
+
+    assert respuesta.status_code == 200
+    assert "access_token" in respuesta.json()
+
+
+def test_token_existente_no_funciona_tras_desactivar_maestro(
+    client,
+    db,
+    usuario_maestro,
+    auth_headers_maestro,
+):
+    # El usuario ya inició sesión y tiene un JWT válido.
+    usuario_maestro.activo = False
+    db.commit()
+
+    respuesta = client.get(
+        "/maestros/",
+        headers=auth_headers_maestro,
+    )
+
+    assert respuesta.status_code == 401

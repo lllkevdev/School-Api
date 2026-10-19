@@ -1,34 +1,45 @@
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from models.alumno import Alumno as AlumnoModel
+from models.alumno import Alumno
+from models.calificacion import Calificacion
+from models.curso import Curso
+from models.evaluacion import Evaluacion
 from models.inscripcion import Inscripcion as InscripcionModel
-from models.materia import Materia as MateriaModel
-from schemas.inscripcion import Inscripcion
+from models.usuario import Usuario
+from schemas.inscripcion import InscripcionCrear
 
 
 def crear_inscripcion(
-        db: Session,
-        inscripcion: Inscripcion,
+    db: Session,
+    inscripcion: InscripcionCrear,
+    usuario: Usuario,
 ) -> tuple[InscripcionModel | None, str | None]:
 
-    alumno = db.query(AlumnoModel).filter(
-        AlumnoModel.id == inscripcion.alumno_id
-    ).first()
+    alumno = db.scalar(
+        select(Alumno).where(
+            Alumno.id == inscripcion.alumno_id
+        )
+    )
 
     if alumno is None:
         return None, "alumno_inscripcion"
 
-    materia = db.query(MateriaModel).filter(
-        MateriaModel.id == inscripcion.materia_id
-    ).first()
+    curso = db.scalar(
+        select(Curso).where(
+            Curso.id == inscripcion.curso_id,
+            Curso.docente_id == usuario.id,
+            Curso.activo.is_(True),
+        )
+    )
 
-    if materia is None:
-        return None, "materia_inscripcion"
+    if curso is None:
+        return None, "curso_inscripcion"
 
     nueva_inscripcion = InscripcionModel(
         alumno_id=inscripcion.alumno_id,
-        materia_id=inscripcion.materia_id
+        curso_id=inscripcion.curso_id,
     )
 
     try:
@@ -42,18 +53,39 @@ def crear_inscripcion(
     return nueva_inscripcion, None
 
 
-
 def eliminar_inscripcion(
     db: Session,
     inscripcion_id: int,
+    usuario: Usuario,
 ) -> tuple[bool, str | None]:
 
-    inscripcion = db.query(InscripcionModel).filter(
-        InscripcionModel.id == inscripcion_id
-    ).first()
+    inscripcion = db.scalar(
+        select(InscripcionModel)
+        .join(Curso)
+        .where(
+            InscripcionModel.id == inscripcion_id,
+            Curso.docente_id == usuario.id,
+        )
+    )
 
     if inscripcion is None:
         return False, "inscripcion_inexistente"
+
+    tiene_calificaciones = db.scalar(
+        select(Calificacion.id)
+        .join(
+            Evaluacion,
+            Calificacion.evaluacion_id == Evaluacion.id,
+        )
+        .where(
+            Calificacion.alumno_id == inscripcion.alumno_id,
+            Evaluacion.curso_id == inscripcion.curso_id,
+        )
+        .limit(1)
+    )
+
+    if tiene_calificaciones is not None:
+        return False, "inscripcion_con_calificaciones"
 
     db.delete(inscripcion)
     db.commit()

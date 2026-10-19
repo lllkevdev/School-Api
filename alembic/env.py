@@ -11,7 +11,8 @@ from models.alumno import Alumno
 from models.materia import Materia
 from models.usuario import Usuario  
 from models.inscripcion import Inscripcion
-
+from models.curso import Curso
+from models.evaluacion import Evaluacion
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
