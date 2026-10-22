@@ -1,7 +1,7 @@
 """crear estructura inicial school api
 
 Revision ID: 72335e404ca2
-Revises: 
+Revises:
 Create Date: 2026-10-22 17:52:43.922767
 
 """
