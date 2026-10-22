@@ -1,127 +1,114 @@
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+
+from models.inscripcion import Inscripcion
+from models.curso import Curso
 from models.alumno import Alumno
 from models.usuario import Usuario
-from schemas.alumno import (
-    Alumno as AlumnoSchema,
-    AlumnoActualizar
-)
-from core.permisos import Rol
+from schemas.alumno import AlumnoCrear
 
 
 def crear_alumno(
     db: Session,
-    alumno: AlumnoSchema
-) -> Alumno:
+    datos: AlumnoCrear,
+    usuario: Usuario,
+) -> tuple[Alumno | None, str | None]:
 
-    nuevo_alumno = Alumno(
-        nombre=alumno.nombre,
-        apellido=alumno.apellido,
-        edad=alumno.edad
+    alumno_existente = db.scalar(
+        select(Alumno).where(
+            Alumno.documento_identidad == datos.documento_identidad,
+        )
     )
 
-    
-    db.add(nuevo_alumno)
-    db.commit()
-    db.refresh(nuevo_alumno)
+    if alumno_existente is not None:
+        return None, "documento_duplicado"
 
-    return nuevo_alumno
+    nuevo_alumno = Alumno(
+        nombre=datos.nombre,
+        apellido=datos.apellido,
+        documento_identidad=datos.documento_identidad,
+        fecha_nacimiento=datos.fecha_nacimiento,
+    )
+
+    try:
+        db.add(nuevo_alumno)
+        db.commit()
+        db.refresh(nuevo_alumno)
+    except IntegrityError:
+        db.rollback()
+        raise
+
+    return nuevo_alumno, None
 
 
-def obtener_alumnos(db: Session) -> list[Alumno]:
-    return db.query(Alumno).all()
+def obtener_alumnos(
+    db: Session,
+    usuario: Usuario,
+) -> list[Alumno]:
+
+    alumnos = db.scalars(
+        select(Alumno).join(Inscripcion).join(Curso).where(
+            Curso.docente_id == usuario.id,
+        ).distinct()
+    ).all()
+
+    return list(alumnos)
 
 
 def buscar_alumno(
     db: Session,
     alumno_id: int,
-    usuario: Usuario
+    usuario: Usuario,
 ) -> tuple[Alumno | None, str | None]:
 
-    alumno = db.query(Alumno).filter(
-        Alumno.id == alumno_id
-    ).first()
+    alumno = db.scalar(
+        select(Alumno).where(
+            Alumno.id == alumno_id
+        )
+    )
 
     if alumno is None:
-        return None, "alumno"
+        return None, "alumno_inexistente"
 
-    if usuario.rol == Rol.ALUMNO:
-        if usuario.alumno_id != alumno_id:
-            return None, "permiso"
+    alumno_accesible = db.scalar(
+        select(Alumno).join(Inscripcion).join(Curso).where(
+            Alumno.id == alumno_id,
+            Curso.docente_id == usuario.id,
+        )
+    )
+
+    if alumno_accesible is None:
+        return None, "permiso"
 
     return alumno, None
 
 
-def actualizar_alumno(
+
+def desactivar_alumno(
     db: Session,
     alumno_id: int,
-    datos: AlumnoActualizar
+    usuario: Usuario,
 ) -> tuple[Alumno | None, str | None]:
 
-    alumno = db.query(Alumno).filter(
-        Alumno.id == alumno_id
-    ).first()
+    alumno, error = buscar_alumno(db, alumno_id, usuario)
+
+    if error is not None:
+        return None, error
 
     if alumno is None:
-        return None, "alumno"
+        return None, "alumno_inexistente"
 
-    cambios = datos.model_dump(exclude_unset=True)
+    if not alumno.activo:
+        return None, "alumno_inactivo"
 
-    for campo, valor in cambios.items():
-        setattr(alumno, campo, valor)
-    
-    db.commit()
-    db.refresh(alumno)
+    alumno.activo = False
 
-    return alumno, None
-
-
-def reemplazar_alumno(
-    db: Session,
-    alumno_id: int,
-    datos: AlumnoSchema
-) -> tuple[Alumno | None, str | None]:
-
-    alumno = db.query(Alumno).filter(
-        Alumno.id == alumno_id
-    ).first()
-
-    if alumno is None:
-        return None, "alumno"
-
-    alumno.nombre = datos.nombre
-    alumno.apellido = datos.apellido
-    alumno.edad = datos.edad
-
-    db.commit()
-    db.refresh(alumno)
-
-    return alumno, None
-
-
-def eliminar_alumno(
-    db: Session,
-    alumno_id: int,
-    forzar: bool = False
-) -> tuple[Alumno | None, str | None]:
-    alumno = db.query(Alumno).filter(
-        Alumno.id == alumno_id
-    ).first()
-
-    if alumno is None:
-        return None, "alumno"
-
-    if alumno.calificaciones:
-        if not forzar:
-            return None, "tiene_calificaciones_alumno"
-    
-    if alumno.calificaciones:
-        for calificacion in list(alumno.calificaciones):
-            db.delete(calificacion)
-
-    for inscripcion in list(alumno.inscripciones):
-        db.delete(inscripcion)
-
-    db.delete(alumno)
-    db.commit()
+    try:
+        db.commit()
+        db.refresh(alumno)
+    except IntegrityError:
+        db.rollback()
+        raise
 
     return alumno, None

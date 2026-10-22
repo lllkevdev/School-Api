@@ -1,21 +1,16 @@
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from models.usuario import Usuario
-from schemas.usuario import (
-    UsuarioCrear, 
-    MaestroCrear,
-    MaestroActualizar
-)
-from schemas.roles import Rol
 from core.security import hash_password
-
-from sqlalchemy.exc import IntegrityError
+from models.usuario import Usuario
+from schemas.roles import Rol
+from schemas.usuario import UsuarioActualizar, UsuarioRegistro
 
 
 def buscar_usuario_por_email(
     db: Session,
-    email: str
+    email: str,
 ) -> Usuario | None:
     return db.scalar(
         select(Usuario).where(Usuario.email == email)
@@ -24,105 +19,57 @@ def buscar_usuario_por_email(
 
 def crear_usuario(
     db: Session,
-    usuario: UsuarioCrear
+    datos: UsuarioRegistro,
 ) -> Usuario:
-
-    password_hash = hash_password(usuario.password)
-
     nuevo_usuario = Usuario(
-        nombre=usuario.nombre,
-        email=usuario.email,
-        password_hash=password_hash,
-        rol=usuario.rol,
+        nombre=datos.nombre.strip(),
+        apellido=datos.apellido.strip(),
+        email=str(datos.email).lower(),
+        telefono=datos.telefono,
+        password_hash=hash_password(datos.password),
+        rol=Rol.ADMIN,
     )
 
     try:
         db.add(nuevo_usuario)
         db.commit()
         db.refresh(nuevo_usuario)
-
         return nuevo_usuario
-
     except IntegrityError:
         db.rollback()
         raise
 
 
-def crear_maestro(db: Session, maestro: MaestroCrear) -> Usuario:
-    nuevo_maestro = Usuario(
-        nombre=maestro.nombre,
-        apellido=maestro.apellido,
-        email=maestro.email,
-        telefono=maestro.telefono,
-        password_hash=hash_password(maestro.password),
-        rol=Rol.MAESTRO,
-    )
-
-    try:
-        db.add(nuevo_maestro)
-        db.commit()
-        db.refresh(nuevo_maestro)
-        return nuevo_maestro
-    except IntegrityError:
-        db.rollback()
-        raise
-
-
-def obtener_maestros(db: Session) -> list[Usuario]:
-    return db.scalars(
-        select(Usuario).where(
-            Usuario.rol == Rol.MAESTRO,
-            Usuario.activo.is_(True),
-        )
-    ).all()
-
-
-def actualizar_maestro(
+def actualizar_usuario(
     db: Session,
-    maestro_id: int,
-    datos: MaestroActualizar,
+    usuario_id: int,
+    datos: UsuarioActualizar,
 ) -> tuple[Usuario | None, str | None]:
-    maestro = db.scalar(
-        select(Usuario).where(
-            Usuario.id == maestro_id,
-            Usuario.rol == Rol.MAESTRO,
-        )
+    usuario = db.scalar(
+        select(Usuario).where(Usuario.id == usuario_id)
     )
 
-    if maestro is None:
-        return None, "maestro_no_encontrado"
+    if usuario is None:
+        return None, "usuario_no_encontrado"
 
     cambios = datos.model_dump(exclude_unset=True)
 
+    if "nombre" in cambios and cambios["nombre"] is not None:
+        cambios["nombre"] = cambios["nombre"].strip()
+
+    if "apellido" in cambios and cambios["apellido"] is not None:
+        cambios["apellido"] = cambios["apellido"].strip()
+
+    if "email" in cambios and cambios["email"] is not None:
+        cambios["email"] = str(cambios["email"]).lower()
+
     for campo, valor in cambios.items():
-        setattr(maestro, campo, valor)
+        setattr(usuario, campo, valor)
 
     try:
         db.commit()
-        db.refresh(maestro)
-        return maestro, None
+        db.refresh(usuario)
+        return usuario, None
     except IntegrityError:
         db.rollback()
         raise
-
-
-def desactivar_maestro(
-    db: Session,
-    maestro_id: int,
-) -> tuple[Usuario | None, str | None]:
-    maestro = db.scalar(
-        select(Usuario).where(
-            Usuario.id == maestro_id,
-            Usuario.rol == Rol.MAESTRO,
-        )
-    )
-
-    if maestro is None:
-        return None, "maestro_no_encontrado"
-
-    maestro.activo = False
-
-    db.commit()
-    db.refresh(maestro)
-
-    return maestro, None

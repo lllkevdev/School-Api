@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
 
+
 class InscripcionCrear(BaseModel):
     alumno_id: int = Field(gt=0)
     curso_id: int = Field(gt=0)

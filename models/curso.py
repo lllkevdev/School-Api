@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from models.evaluacion import Evaluacion
     from models.inscripcion import Inscripcion
     from models.usuario import Usuario
-
+    from models.invitacion import Invitacion
 
 class Curso(Base):
     __tablename__ = "cursos"
@@ -61,5 +61,9 @@ class Curso(Base):
     )
 
     evaluaciones: Mapped[list["Evaluacion"]] = relationship(
+        back_populates="curso",
+    )
+
+    invitaciones: Mapped[list["Invitacion"]] = relationship(
         back_populates="curso",
     )

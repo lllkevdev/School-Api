@@ -95,6 +95,18 @@ ERRORES_HTTP = {
         409,
         "No se puede eliminar una inscipción con calificaciones asociadas",
     ),
+    "documento_duplicado": (
+        409,
+        "DNI ya registrado",
+    ),
+    "alumno_inexistente" : (
+        404,
+        "Alumno no encontrado",
+    ),
+    "alumno_inactivo" : (
+        409,
+        "El alumno ya está desactivado"
+    ),
 }
 
 

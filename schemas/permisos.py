@@ -2,28 +2,47 @@ from enum import Enum
 
 
 class Permiso(str, Enum):
+    # Alumnos
     CREAR_ALUMNO = "crear_alumno"
+    VER_ALUMNOS = "ver_alumnos"
+    VER_ALUMNO = "ver_alumno"
     MODIFICAR_ALUMNO = "modificar_alumno"
     ELIMINAR_ALUMNO = "eliminar_alumno"
 
-    CREAR_MATERIA = "crear_materia"
-    MODIFICAR_MATERIA = "modificar_materia"
-    ELIMINAR_MATERIA = "eliminar_materia"
+    # Cursos
+    CREAR_CURSO = "crear_curso"
+    VER_CURSOS = "ver_cursos"
+    VER_CURSO = "ver_curso"
+    MODIFICAR_CURSO = "modificar_curso"
+    ELIMINAR_CURSO = "eliminar_curso"
 
-    CREAR_CALIFICACION = "crear_calificacion"
-    MODIFICAR_CALIFICACION = "modificar_calificacion"
-    ELIMINAR_CALIFICACION = "eliminar_calificacion"
+    # Evaluaciones
+    CREAR_EVALUACION = "crear_evaluacion"
+    VER_EVALUACIONES = "ver_evaluaciones"
+    MODIFICAR_EVALUACION = "modificar_evaluacion"
+    ELIMINAR_EVALUACION = "eliminar_evaluacion"
+
+    # Inscripciones
     CREAR_INSCRIPCION = "crear_inscripcion"
+    VER_INSCRIPCIONES = "ver_inscripciones"
     ELIMINAR_INSCRIPCION = "eliminar_inscripcion"
 
-    VER_CALIFICACION = "ver_calificacion"
-    VER_TODAS_CALIFICACIONES = "ver_todas_calificaciones"
-    VER_ALUMNOS = "ver_alumnos"
-    VER_MATERIAS = "ver_materias"
-    VER_MIS_CALIFICACIONES = "ver_mis_calificaciones"
-    VER_CALIFICACIONES_MAESTRO = "ver_calificaciones_maestro"
+    # Calificaciones
+    CREAR_CALIFICACION = "crear_calificacion"
+    VER_CALIFICACIONES = "ver_calificaciones"
+    MODIFICAR_CALIFICACION = "modificar_calificacion"
+    ELIMINAR_CALIFICACION = "eliminar_calificacion"
+    EXPORTAR_CALIFICACIONES = "exportar_calificaciones"
 
-    CREAR_MAESTRO = "crear_maestro"
-    MODIFICAR_MAESTRO = "modificar_maestro"
-    ELIMINAR_MAESTRO = "eliminar_maestro"
-    VER_MAESTROS = "ver_maestros"
+    # Invitaciones
+    CREAR_INVITACION = "crear_invitacion"
+    VER_INVITACIONES = "ver_invitaciones"
+    REVOCAR_INVITACION = "revocar_invitacion"
+
+    # Perfil académico
+    VER_PERFIL_ACADEMICO = "ver_perfil_academico"
+    MODIFICAR_PERFIL_ACADEMICO = "modificar_perfil_academico"
+
+    # Usuarios
+    VER_MI_PERFIL = "ver_mi_perfil"
+    MODIFICAR_MI_PERFIL = "modificar_mi_perfil"

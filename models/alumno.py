@@ -1,10 +1,13 @@
+from datetime import date
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, String
+from sqlalchemy import Date, String, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database.connection import Base
 from models.inscripcion import Inscripcion
+from models.invitacion import Invitacion
+
 
 if TYPE_CHECKING:
     from models.calificacion import Calificacion
@@ -12,13 +15,6 @@ if TYPE_CHECKING:
 
 class Alumno(Base):
     __tablename__ = "alumnos"
-
-    __table_args__ = (
-        CheckConstraint(
-            "edad > 0 AND edad < 100",
-            name="ck_alumnos_edad",
-        ),
-    )
 
     id: Mapped[int] = mapped_column(
         primary_key=True,
@@ -34,7 +30,21 @@ class Alumno(Base):
         nullable=False,
     )
 
-    edad: Mapped[int] = mapped_column(
+    documento_identidad: Mapped[str] = mapped_column(
+        String(20),
+        unique=True,
+        index=True,
+        nullable=False,
+    )
+
+    fecha_nacimiento: Mapped[date] = mapped_column(
+        Date,
+        nullable=False,
+    )
+
+    activo: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
         nullable=False,
     )
 
@@ -43,5 +53,9 @@ class Alumno(Base):
     )
 
     inscripciones: Mapped[list["Inscripcion"]] = relationship(
+        back_populates="alumno",
+    )
+
+    invitaciones: Mapped[list["Invitacion"]] = relationship(
         back_populates="alumno",
     )

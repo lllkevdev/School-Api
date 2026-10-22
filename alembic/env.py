@@ -7,12 +7,12 @@ from alembic import context
 
 from database.connection import Base, DATABASE_URL
 from models.calificacion import Calificacion
-from models.alumno import Alumno   
-from models.materia import Materia
-from models.usuario import Usuario  
+from models.alumno import Alumno
+from models.usuario import Usuario
 from models.inscripcion import Inscripcion
 from models.curso import Curso
 from models.evaluacion import Evaluacion
+from models.invitacion import Invitacion
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config

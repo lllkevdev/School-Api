@@ -7,13 +7,15 @@ from sqlalchemy.pool import StaticPool
 from database.connection import Base
 from database.dependencies import get_db
 from models.alumno import Alumno
-from models.materia import Materia
 from models.calificacion import Calificacion
 from models.usuario import Usuario
 from models.inscripcion import Inscripcion
 from app.main import app
 from core.security import hash_password
 from schemas.roles import Rol
+from models.curso import Curso
+from models.evaluacion import Evaluacion
+from models.invitacion import Invitacion
 
 # URL de la base de tests: configurable por entorno, con fallback a SQLite local
 # para que la suite funcione en cualquier máquina sin un Postgres preconfigurado.
@@ -60,8 +62,10 @@ def preparar_base_de_datos():
 
 def limpiar_db(db):
     db.query(Calificacion).delete()
+    db.query(Evaluacion).delete()
+    db.query(Invitacion).delete()
     db.query(Inscripcion).delete()
-    db.query(Materia).delete()
+    db.query(Curso).delete()
     db.query(Usuario).delete()
     db.query(Alumno).delete()
     db.commit()
@@ -172,7 +176,7 @@ def usuario_maestro(db):
         nombre="Juan",
         email="juan@test.com",
         password_hash=hash_password("123456"),
-        rol=Rol.MAESTRO,
+        rol=Rol.ADMIN,
         activo=True
     )
 

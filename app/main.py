@@ -3,17 +3,12 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from routers.alumno import router as alumno_router
-from routers.materia import router as materia_router
-from routers.calificacion import router as calificacion_router
-from routers.inscripciones import router as inscripcion_router
 from routers.auth import router as auth_router
-from routers.maestro import router as maestro_router
-
 
 app = FastAPI(
     title="School API",
-    description="API para gestionar alumnos, materias y calificaciones",
-    version="1.0.0"
+    description="API para gestionar cursos, alumnos y calificaciones",
+    version="1.0.0",
 )
 
 
@@ -30,18 +25,14 @@ app.add_middleware(
 async def manejar_error_general(request: Request, exc: Exception):
     return JSONResponse(
         status_code=500,
-        content={"detail": "Error interno del servidor"}
+        content={"detail": "Error interno del servidor"},
     )
 
 
 app.include_router(alumno_router)
-app.include_router(materia_router)
-app.include_router(calificacion_router)
-app.include_router(inscripcion_router)
 app.include_router(auth_router)
-app.include_router(maestro_router)
 
 
 @app.get("/")
 def inicio():
-    return {"mensaje": "API de alumnos funcionando"}
+    return {"mensaje": "School API funcionando"}

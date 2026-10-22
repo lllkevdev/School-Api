@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from services.usuario_service import buscar_usuario_por_email
 from schemas.auth import LoginRequest, TokenResponse
 from core.security import verify_password, create_access_token
-from core.config import SECRET_KEY, ACCES_TOKEN_EXPIRE_MINUTES
+from core.config import SECRET_KEY, ACCESS_TOKEN_EXPIRE_MINUTES
 
 
 
@@ -29,10 +29,13 @@ def autenticar_usuario(
     if not usuario.activo:
         raise ValueError("credenciales")
 
+    if SECRET_KEY is None:
+        raise ValueError("SECRET_KEY no configurada")
+
     access_token = create_access_token(
         user_id=usuario.id,
         secret_key=SECRET_KEY,
-        expires_minutes=ACCES_TOKEN_EXPIRE_MINUTES,
+        expires_minutes=ACCESS_TOKEN_EXPIRE_MINUTES,
     )
 
     return TokenResponse(

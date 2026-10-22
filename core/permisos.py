@@ -1,91 +1,76 @@
-from schemas.roles import Rol
-from schemas.permisos import Permiso
-from core.dependencies import get_usuario_actual
+from fastapi import Depends, HTTPException
 
-from fastapi import HTTPException, Depends
+from core.dependencies import get_usuario_actual
+from schemas.permisos import Permiso
+from schemas.roles import Rol
 
 
 PERMISOS_POR_ROL: dict[Rol, set[Permiso]] = {
-
     Rol.ADMIN: {
+        # Alumnos y perfiles académicos
         Permiso.CREAR_ALUMNO,
+        Permiso.VER_ALUMNOS,
+        Permiso.VER_ALUMNO,
         Permiso.MODIFICAR_ALUMNO,
         Permiso.ELIMINAR_ALUMNO,
+        Permiso.VER_PERFIL_ACADEMICO,
+        Permiso.MODIFICAR_PERFIL_ACADEMICO,
 
-        Permiso.CREAR_MATERIA,
-        Permiso.MODIFICAR_MATERIA,
-        Permiso.ELIMINAR_MATERIA,
+        # Cursos
+        Permiso.CREAR_CURSO,
+        Permiso.VER_CURSOS,
+        Permiso.VER_CURSO,
+        Permiso.MODIFICAR_CURSO,
+        Permiso.ELIMINAR_CURSO,
 
-        Permiso.CREAR_CALIFICACION,
-        Permiso.MODIFICAR_CALIFICACION,
-        Permiso.ELIMINAR_CALIFICACION,
+        # Evaluaciones
+        Permiso.CREAR_EVALUACION,
+        Permiso.VER_EVALUACIONES,
+        Permiso.MODIFICAR_EVALUACION,
+        Permiso.ELIMINAR_EVALUACION,
 
+        # Inscripciones
         Permiso.CREAR_INSCRIPCION,
+        Permiso.VER_INSCRIPCIONES,
         Permiso.ELIMINAR_INSCRIPCION,
 
-        Permiso.VER_CALIFICACION,
-        Permiso.VER_TODAS_CALIFICACIONES,
-        Permiso.VER_ALUMNOS,
-        Permiso.VER_MATERIAS,
-
-        Permiso.CREAR_MAESTRO,
-        Permiso.MODIFICAR_MAESTRO,
-        Permiso.ELIMINAR_MAESTRO,
-        Permiso.VER_MAESTROS
-    },
-
-    Rol.MAESTRO: {
+        # Calificaciones
         Permiso.CREAR_CALIFICACION,
+        Permiso.VER_CALIFICACIONES,
         Permiso.MODIFICAR_CALIFICACION,
         Permiso.ELIMINAR_CALIFICACION,
-        Permiso.VER_CALIFICACION,
-        Permiso.VER_ALUMNOS,
-        Permiso.VER_MATERIAS,
-        Permiso.VER_CALIFICACIONES_MAESTRO
+        Permiso.EXPORTAR_CALIFICACIONES,
+
+        # Invitaciones
+        Permiso.CREAR_INVITACION,
+        Permiso.VER_INVITACIONES,
+        Permiso.REVOCAR_INVITACION,
+
+        # Perfil propio
+        Permiso.VER_MI_PERFIL,
+        Permiso.MODIFICAR_MI_PERFIL,
     },
 
     Rol.ALUMNO: {
-        Permiso.VER_CALIFICACION,
-        Permiso.VER_MATERIAS,
-        Permiso.VER_MIS_CALIFICACIONES
+        Permiso.VER_PERFIL_ACADEMICO,
+        Permiso.VER_MI_PERFIL,
+        Permiso.MODIFICAR_MI_PERFIL,
     },
 }
 
-def tiene_permiso(rol, permiso):
-    return permiso in PERMISOS_POR_ROL[rol]
+
+def tiene_permiso(rol: Rol, permiso: Permiso) -> bool:
+    return permiso in PERMISOS_POR_ROL.get(rol, set())
 
 
-def requiere_permiso(permiso):
-
+def requiere_permiso(permiso: Permiso):
     def verificar(usuario=Depends(get_usuario_actual)):
-        tiene = tiene_permiso(usuario.rol, permiso)
-
-        if not tiene:
+        if not tiene_permiso(usuario.rol, permiso):
             raise HTTPException(
                 status_code=403,
-                detail="No tiene permiso para realizar esta acción"
+                detail="No tiene permiso para realizar esta acción",
             )
 
-        return tiene
+        return usuario
 
     return verificar
-
-
-def requiere_permiso_calificaciones(
-    usuario=Depends(get_usuario_actual)
-):
-    permisos = {
-        Rol.ADMIN: Permiso.VER_CALIFICACION,
-        Rol.MAESTRO: Permiso.VER_CALIFICACIONES_MAESTRO,
-        Rol.ALUMNO: Permiso.VER_MIS_CALIFICACIONES,
-    }
-
-    permiso = permisos.get(usuario.rol)
-
-    if permiso is None or not tiene_permiso(usuario.rol, permiso):
-        raise HTTPException(
-            status_code=403,
-            detail="No tiene permiso para realizar esta acción"
-        )
-
-    return True

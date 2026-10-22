@@ -11,7 +11,7 @@ from schemas.roles import Rol
 if TYPE_CHECKING:
     from models.alumno import Alumno
     from models.curso import Curso
-    from models.materia import Materia
+    from models.invitacion import Invitacion
 
 
 class Usuario(Base):
@@ -19,7 +19,6 @@ class Usuario(Base):
 
     id: Mapped[int] = mapped_column(
         primary_key=True,
-        index=True,
     )
 
     nombre: Mapped[str] = mapped_column(
@@ -74,10 +73,6 @@ class Usuario(Base):
         back_populates="docente",
     )
 
-    materias: Mapped[list["Materia"]] = relationship(
-        back_populates="maestro"
-    )
-
     alumno_id: Mapped[int | None] = mapped_column(
         ForeignKey("alumnos.id"),
         nullable=True,
@@ -85,3 +80,7 @@ class Usuario(Base):
     )
 
     alumno: Mapped["Alumno | None"] = relationship()
+
+    invitaciones: Mapped[list["Invitacion"]] = relationship(
+        back_populates="docente",
+    )

@@ -3,43 +3,54 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from models.alumno import Alumno
-from models.calificacion import Calificacion
 from models.curso import Curso
-from models.evaluacion import Evaluacion
-from models.inscripcion import Inscripcion as InscripcionModel
+from models.inscripcion import Inscripcion
 from models.usuario import Usuario
+from models.calificacion import Calificacion
+from models.evaluacion import Evaluacion
 from schemas.inscripcion import InscripcionCrear
 
 
 def crear_inscripcion(
     db: Session,
-    inscripcion: InscripcionCrear,
+    datos: InscripcionCrear,
     usuario: Usuario,
-) -> tuple[InscripcionModel | None, str | None]:
-
+) -> tuple[Inscripcion | None, str | None]:
     alumno = db.scalar(
         select(Alumno).where(
-            Alumno.id == inscripcion.alumno_id
+            Alumno.id == datos.alumno_id,
         )
     )
 
     if alumno is None:
-        return None, "alumno_inscripcion"
+        return None, "alumno_inexistente"
 
     curso = db.scalar(
         select(Curso).where(
-            Curso.id == inscripcion.curso_id,
+            Curso.id == datos.curso_id,
             Curso.docente_id == usuario.id,
-            Curso.activo.is_(True),
         )
     )
 
     if curso is None:
-        return None, "curso_inscripcion"
+        return None, "curso_inexistente"
 
-    nueva_inscripcion = InscripcionModel(
-        alumno_id=inscripcion.alumno_id,
-        curso_id=inscripcion.curso_id,
+    if not curso.activo:
+        return None, "curso_inactivo"
+
+    inscripcion_existente = db.scalar(
+        select(Inscripcion.id).where(
+            Inscripcion.alumno_id == alumno.id,
+            Inscripcion.curso_id == curso.id,
+        )
+    )
+
+    if inscripcion_existente is not None:
+        return None, "inscripcion_duplicada"
+
+    nueva_inscripcion = Inscripcion(
+        alumno_id=alumno.id,
+        curso_id=curso.id,
     )
 
     try:
@@ -48,7 +59,7 @@ def crear_inscripcion(
         db.refresh(nueva_inscripcion)
     except IntegrityError:
         db.rollback()
-        return None, "inscripcion_conflicto"
+        raise
 
     return nueva_inscripcion, None
 
@@ -60,10 +71,8 @@ def eliminar_inscripcion(
 ) -> tuple[bool, str | None]:
 
     inscripcion = db.scalar(
-        select(InscripcionModel)
-        .join(Curso)
-        .where(
-            InscripcionModel.id == inscripcion_id,
+        select(Inscripcion).join(Curso).where(
+            Inscripcion.id == inscripcion_id,
             Curso.docente_id == usuario.id,
         )
     )
@@ -71,23 +80,21 @@ def eliminar_inscripcion(
     if inscripcion is None:
         return False, "inscripcion_inexistente"
 
-    tiene_calificaciones = db.scalar(
-        select(Calificacion.id)
-        .join(
-            Evaluacion,
-            Calificacion.evaluacion_id == Evaluacion.id,
-        )
-        .where(
+    calificacion_existente = db.scalar(
+        select(Calificacion.id).join(Evaluacion).where(
             Calificacion.alumno_id == inscripcion.alumno_id,
             Evaluacion.curso_id == inscripcion.curso_id,
         )
-        .limit(1)
     )
 
-    if tiene_calificaciones is not None:
+    if calificacion_existente is not None:
         return False, "inscripcion_con_calificaciones"
 
-    db.delete(inscripcion)
-    db.commit()
+    try:
+        db.delete(inscripcion)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise
 
     return True, None
