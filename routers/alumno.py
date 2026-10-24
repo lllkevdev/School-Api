@@ -4,9 +4,11 @@ from sqlalchemy.orm import Session
 from database.dependencies import get_db
 from core.permisos import requiere_permiso
 from core.errores import error_to_http
+from core.dependencies import get_alumno_actual, get_usuario_actual
 from schemas.permisos import Permiso
 from schemas.alumno import AlumnoCrear, AlumnoRespuesta
 from models.usuario import Usuario
+from models.alumno import Alumno
 from services.alumno_service import (
     crear_alumno,
     obtener_alumnos,
@@ -19,6 +21,16 @@ router = APIRouter(
     prefix="/alumnos",
     tags=["Alumnos"],
 )
+
+
+@router.get(
+    "/me",
+    response_model=AlumnoRespuesta,
+)
+def obtener_mi_perfil(
+    alumno: Alumno = Depends(get_alumno_actual),
+):
+    return alumno
 
 
 @router.post(
@@ -59,10 +71,17 @@ def obtener(
 def obtener_por_id(
     alumno_id: int,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(
-        requiere_permiso(Permiso.VER_ALUMNO)
-    ),
+    usuario: Usuario = Depends(get_usuario_actual),
 ):
+    if usuario.alumno_id is not None and usuario.alumno_id == alumno_id:
+        alumno = db.get(Alumno, alumno_id)
+        if alumno is None:
+            error_to_http("alumno_inexistente")
+        return alumno
+
+    if usuario.rol.value == "alumno" or (usuario.alumno_id is not None and usuario.alumno_id != alumno_id):
+        error_to_http("alumno_inexistente")
+
     alumno, error = buscar_alumno(
         db,
         alumno_id,

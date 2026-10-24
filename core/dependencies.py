@@ -8,6 +8,7 @@ from core.security import decode_access_token
 from core.config import SECRET_KEY
 from core.errores import error_to_http
 from models.usuario import Usuario
+from models.alumno import Alumno
 import jwt
 
 
@@ -47,5 +48,25 @@ def get_usuario_actual(
 
     if not usuario.activo:
         error_to_http("no_autenticado")
-        
+
     return usuario
+
+
+def get_alumno_actual(
+    usuario: Usuario = Depends(get_usuario_actual),
+    db: Session = Depends(get_db),
+) -> Alumno:
+    if usuario.alumno_id is None:
+        error_to_http("no_autenticado")
+
+    alumno = db.scalar(
+        select(Alumno).where(Alumno.id == usuario.alumno_id)
+    )
+
+    if alumno is None:
+        error_to_http("alumno_inexistente")
+
+    if not alumno.activo:
+        error_to_http("alumno_inactivo")
+
+    return alumno

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from core.security import hash_password
 from models.usuario import Usuario
 from schemas.roles import Rol
-from schemas.usuario import UsuarioActualizar, UsuarioRegistro
+from schemas.usuario import UsuarioActualizar, UsuarioCrear, UsuarioRegistro
 
 
 def buscar_usuario_por_email(
@@ -19,15 +19,23 @@ def buscar_usuario_por_email(
 
 def crear_usuario(
     db: Session,
-    datos: UsuarioRegistro,
+    datos: UsuarioCrear | UsuarioRegistro,
 ) -> Usuario:
+    apellido = getattr(datos, "apellido", None)
+    if apellido is None or (isinstance(apellido, str) and apellido.strip() == ""):
+        apellido = ""
+
+    rol = getattr(datos, "rol", None)
+    if rol is None:
+        rol = Rol.ADMIN
+
     nuevo_usuario = Usuario(
-        nombre=datos.nombre.strip(),
-        apellido=datos.apellido.strip(),
+        nombre=datos.nombre.strip() if isinstance(datos.nombre, str) else datos.nombre,
+        apellido=apellido.strip() if isinstance(apellido, str) else apellido,
         email=str(datos.email).lower(),
-        telefono=datos.telefono,
+        telefono=getattr(datos, "telefono", None),
         password_hash=hash_password(datos.password),
-        rol=Rol.ADMIN,
+        rol=rol,
     )
 
     try:
@@ -38,6 +46,9 @@ def crear_usuario(
     except IntegrityError:
         db.rollback()
         raise
+
+
+
 
 
 def actualizar_usuario(

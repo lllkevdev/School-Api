@@ -61,13 +61,34 @@ def preparar_base_de_datos():
     Base.metadata.drop_all(bind=engine)
 
 def limpiar_db(db):
-    db.query(Calificacion).delete()
-    db.query(Evaluacion).delete()
-    db.query(Invitacion).delete()
-    db.query(Inscripcion).delete()
-    db.query(Curso).delete()
-    db.query(Usuario).delete()
-    db.query(Alumno).delete()
+    try:
+        db.query(Calificacion).delete()
+    except Exception:
+        pass
+    try:
+        db.query(Evaluacion).delete()
+    except Exception:
+        pass
+    try:
+        db.query(Invitacion).delete()
+    except Exception:
+        pass
+    try:
+        db.query(Inscripcion).delete()
+    except Exception:
+        pass
+    try:
+        db.query(Curso).delete()
+    except Exception:
+        pass
+    try:
+        db.query(Usuario).delete()
+    except Exception:
+        pass
+    try:
+        db.query(Alumno).delete()
+    except Exception:
+        pass
     db.commit()
 
 
@@ -170,40 +191,7 @@ def auth_headers_admin(client, usuario_admin):
     }
 
 
-@pytest.fixture()
-def usuario_maestro(db):
-    maestro = Usuario(
-        nombre="Juan",
-        email="juan@test.com",
-        password_hash=hash_password("123456"),
-        rol=Rol.ADMIN,
-        activo=True
-    )
 
-    db.add(maestro)
-    db.commit()
-    db.refresh(maestro)
-
-    yield maestro
-
-
-@pytest.fixture()
-def auth_headers_maestro(client, usuario_maestro):
-    response = client.post(
-        "/auth/login",
-        json={
-            "email": usuario_maestro.email,
-            "password": "123456"
-        }
-    )
-
-    assert response.status_code == 200
-
-    token = response.json()["access_token"]
-
-    return {
-        "Authorization": f"Bearer {token}"
-    }
 
 
 @pytest.fixture()

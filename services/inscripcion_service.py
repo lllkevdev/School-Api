@@ -2,6 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from core.propiedad import obtener_curso_propietario
 from models.alumno import Alumno
 from models.curso import Curso
 from models.inscripcion import Inscripcion
@@ -9,6 +10,16 @@ from models.usuario import Usuario
 from models.calificacion import Calificacion
 from models.evaluacion import Evaluacion
 from schemas.inscripcion import InscripcionCrear
+
+
+def listar_inscripciones_por_alumno(
+    db: Session,
+    alumno_id: int,
+) -> list[Inscripcion]:
+    inscripciones = db.scalars(
+        select(Inscripcion).where(Inscripcion.alumno_id == alumno_id)
+    ).all()
+    return list(inscripciones)
 
 
 def crear_inscripcion(
@@ -62,6 +73,21 @@ def crear_inscripcion(
         raise
 
     return nueva_inscripcion, None
+
+
+def listar_inscripciones_por_curso(
+    db: Session,
+    curso_id: int,
+    usuario: Usuario,
+) -> tuple[list[Inscripcion] | None, str | None]:
+    curso = obtener_curso_propietario(db, curso_id, usuario)
+    if curso is None:
+        return None, "curso_inexistente"
+
+    inscripciones = db.scalars(
+        select(Inscripcion).where(Inscripcion.curso_id == curso.id)
+    ).all()
+    return list(inscripciones), None
 
 
 def eliminar_inscripcion(

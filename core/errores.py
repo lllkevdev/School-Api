@@ -93,7 +93,7 @@ ERRORES_HTTP = {
     ),
     "inscripcion_con_calificaciones": (
         409,
-        "No se puede eliminar una inscipción con calificaciones asociadas",
+        "No se puede eliminar una inscripción con calificaciones asociadas",
     ),
     "documento_duplicado": (
         409,
@@ -106,6 +106,38 @@ ERRORES_HTTP = {
     "alumno_inactivo" : (
         409,
         "El alumno ya está desactivado"
+    ),
+    "invitacion_inexistente": (
+        404,
+        "Invitación no encontrada",
+    ),
+    "invitacion_invalida": (
+        400,
+        "Invitación inválida",
+    ),
+    "invitacion_expirada": (
+        410,
+        "La invitación ha expirado",
+    ),
+    "invitacion_usada": (
+        409,
+        "La invitación ya fue utilizada",
+    ),
+    "invitacion_revocada": (
+        409,
+        "La invitación fue revocada",
+    ),
+    "curso_inactivo": (
+        409,
+        "El curso está inactivo",
+    ),
+    "tiene_inscripciones": (
+        409,
+        "No se puede eliminar el curso porque tiene inscripciones asociadas",
+    ),
+    "tiene_evaluaciones": (
+        409,
+        "No se puede eliminar el curso porque tiene evaluaciones asociadas",
     ),
 }
 

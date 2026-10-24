@@ -11,9 +11,9 @@ def test_rollback_calificacion():
     try:
         calificacion = Calificacion(
             alumno_id=999999,
-            materia_id=999999,
+            evaluacion_id=999999,
+            curso_id=999999,
             nota=10,
-            periodo=1
         )
 
         db.add(calificacion)
@@ -23,7 +23,6 @@ def test_rollback_calificacion():
 
         db.rollback()
 
-        # Comprobamos que la sesión sigue funcionando
         resultado = db.query(Calificacion).count()
 
         assert resultado >= 0

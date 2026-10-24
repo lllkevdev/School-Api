@@ -4,6 +4,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from routers.alumno import router as alumno_router
 from routers.auth import router as auth_router
+from routers.curso import router as curso_router
+from routers.evaluacion import router as evaluacion_router
+from routers.inscripcion import router as inscripcion_router
+from routers.calificacion import router as calificacion_router
+from routers.invitacion import router as invitacion_router
 
 app = FastAPI(
     title="School API",
@@ -31,6 +36,11 @@ async def manejar_error_general(request: Request, exc: Exception):
 
 app.include_router(alumno_router)
 app.include_router(auth_router)
+app.include_router(curso_router)
+app.include_router(evaluacion_router)
+app.include_router(inscripcion_router)
+app.include_router(calificacion_router)
+app.include_router(invitacion_router)
 
 
 @app.get("/")

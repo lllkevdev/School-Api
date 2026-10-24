@@ -2,6 +2,13 @@ from enum import Enum
 
 
 class Permiso(str, Enum):
+    # Materias (compatibilidad legacy)
+    CREAR_MATERIA = "crear_materia"
+    VER_MATERIAS = "ver_materias"
+    VER_MATERIA = "ver_materia"
+    MODIFICAR_MATERIA = "modificar_materia"
+    ELIMINAR_MATERIA = "eliminar_materia"
+
     # Alumnos
     CREAR_ALUMNO = "crear_alumno"
     VER_ALUMNOS = "ver_alumnos"
@@ -30,6 +37,8 @@ class Permiso(str, Enum):
     # Calificaciones
     CREAR_CALIFICACION = "crear_calificacion"
     VER_CALIFICACIONES = "ver_calificaciones"
+    VER_CALIFICACION = "ver_calificacion"
+    VER_TODAS_CALIFICACIONES = "ver_todas_calificaciones"
     MODIFICAR_CALIFICACION = "modificar_calificacion"
     ELIMINAR_CALIFICACION = "eliminar_calificacion"
     EXPORTAR_CALIFICACIONES = "exportar_calificaciones"

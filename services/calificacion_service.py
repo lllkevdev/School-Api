@@ -7,10 +7,92 @@ from models.curso import Curso
 from models.evaluacion import Evaluacion
 from models.inscripcion import Inscripcion
 from models.usuario import Usuario
+from models.alumno import Alumno
 from schemas.calificacion import (
     CalificacionActualizar,
     CalificacionCrear,
 )
+
+
+def listar_calificaciones_alumno(
+    db: Session,
+    alumno_id: int,
+) -> list[Calificacion]:
+    calificaciones = db.scalars(
+        select(Calificacion).where(Calificacion.alumno_id == alumno_id)
+    ).all()
+    return list(calificaciones)
+
+
+def obtener_promedio_alumno(
+    db: Session,
+    alumno_id: int,
+) -> tuple[float | None, str | None]:
+    calificaciones = db.scalars(
+        select(Calificacion).where(Calificacion.alumno_id == alumno_id)
+    ).all()
+    if not calificaciones:
+        return None, "calificaciones"
+    total = sum(c.nota for c in calificaciones)
+    promedio = total / len(calificaciones)
+    return round(promedio, 2), None
+
+
+def obtener_historial_alumno(
+    db: Session,
+    alumno_id: int,
+) -> list[Calificacion]:
+    calificaciones = db.scalars(
+        select(Calificacion).where(Calificacion.alumno_id == alumno_id)
+    ).all()
+    return list(calificaciones)
+
+
+def obtener_promedio_por_curso(
+    db: Session,
+    curso_id: int,
+    usuario: Usuario,
+) -> tuple[float | None, str | None]:
+    from core.propiedad import obtener_curso_propietario
+
+    curso = obtener_curso_propietario(db, curso_id, usuario)
+    if curso is None:
+        return None, "curso_inexistente"
+
+    calificaciones = db.scalars(
+        select(Calificacion).where(Calificacion.curso_id == curso.id)
+    ).all()
+    if not calificaciones:
+        return None, "calificaciones"
+    total = sum(c.nota for c in calificaciones)
+    promedio = total / len(calificaciones)
+    return round(promedio, 2), None
+
+
+def generar_csv_calificaciones(
+    db: Session,
+    curso_id: int,
+    usuario: Usuario,
+):
+    from core.propiedad import obtener_curso_propietario
+    from models.alumno import Alumno
+
+    curso = obtener_curso_propietario(db, curso_id, usuario)
+    if curso is None:
+        return None, "curso_inexistente"
+
+    calificaciones = db.scalars(
+        select(Calificacion).where(Calificacion.curso_id == curso.id)
+    ).all()
+
+    lineas = ["alumno_id,nombre,apellido,evaluacion_id,nota,curso_id"]
+    for c in calificaciones:
+        alumno = db.get(Alumno, c.alumno_id)
+        nombre = alumno.nombre if alumno else ""
+        apellido = alumno.apellido if alumno else ""
+        lineas.append(f"{c.alumno_id},{nombre},{apellido},{c.evaluacion_id},{c.nota},{c.curso_id}")
+
+    return "\n".join(lineas) + "\n"
 
 
 def crear_calificacion(
