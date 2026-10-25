@@ -107,7 +107,10 @@ def eliminar_inscripcion(
         return False, "inscripcion_inexistente"
 
     calificacion_existente = db.scalar(
-        select(Calificacion.id).join(Evaluacion).where(
+        select(Calificacion.id).join(
+            Evaluacion,
+            Calificacion.evaluacion_id == Evaluacion.id,
+        ).where(
             Calificacion.alumno_id == inscripcion.alumno_id,
             Evaluacion.curso_id == inscripcion.curso_id,
         )

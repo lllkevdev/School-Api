@@ -192,8 +192,6 @@ def auth_headers_admin(client, usuario_admin):
 
 
 
-
-
 @pytest.fixture()
 def usuario_alumno(db):
     alumno = Alumno(
