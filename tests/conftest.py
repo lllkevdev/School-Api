@@ -1,4 +1,6 @@
 import os
+from datetime import date
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -197,7 +199,8 @@ def usuario_alumno(db):
     alumno = Alumno(
         nombre="Juan",
         apellido="Perez",
-        edad=20
+        documento_identidad="12345678",
+        fecha_nacimiento=date(2005, 1, 1),
     )
 
     db.add(alumno)

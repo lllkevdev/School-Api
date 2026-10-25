@@ -3,14 +3,24 @@ from sqlalchemy.orm import Session
 
 from database.dependencies import get_db
 from schemas.auth import LoginRequest, TokenResponse
+from schemas.usuario import UsuarioRespuesta
 from services.auth_service import autenticar_usuario
+from core.dependencies import get_usuario_actual
 from core.errores import error_to_http
+from models.usuario import Usuario
 
 
 router = APIRouter(
     prefix="/auth",
     tags=["Autenticación"],
 )
+
+
+@router.get("/me", response_model=UsuarioRespuesta)
+def perfil_actual(
+    usuario: Usuario = Depends(get_usuario_actual),
+):
+    return usuario
 
 
 @router.post("/login", response_model=TokenResponse)

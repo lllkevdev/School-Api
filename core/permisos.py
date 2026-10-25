@@ -2,6 +2,7 @@
 from fastapi import Depends, HTTPException
 
 from core.dependencies import get_usuario_actual
+from models.usuario import Usuario
 from schemas.permisos import Permiso
 from schemas.roles import Rol
 
@@ -79,42 +80,15 @@ def tiene_permiso(rol: Rol, permiso: Permiso) -> bool:
 
 
 def requiere_permiso(permiso: Permiso):
-    def verificar(usuario=None, *args, **kwargs):
-        usuario_actual = usuario
-        if usuario_actual is None and args:
-            for arg in args:
-                if hasattr(arg, "rol"):
-                    usuario_actual = arg
-                    break
-        if usuario_actual is None and len(args) == 1 and hasattr(args[0], "rol"):
-            usuario_actual = args[0]
-        if usuario_actual is None:
-            try:
-                usuario_actual = get_usuario_actual(*args, **kwargs)
-            except Exception:
-                pass
-
-        if usuario_actual is None or not hasattr(usuario_actual, "rol"):
+    def verificar(
+        usuario: Usuario = Depends(get_usuario_actual),
+    ) -> Usuario:
+        if not tiene_permiso(usuario.rol, permiso):
             raise HTTPException(
                 status_code=403,
                 detail="No tiene permiso para realizar esta acción",
             )
 
-        if not tiene_permiso(usuario_actual.rol, permiso):
-            raise HTTPException(
-                status_code=403,
-                detail="No tiene permiso para realizar esta acción",
-            )
-
-        try:
-            import inspect
-
-            frame = inspect.currentframe().f_back
-            if frame and frame.f_globals.get("__name__", "").startswith("tests."):
-                return True
-        except Exception:
-            pass
-
-        return usuario_actual
+        return usuario
 
     return verificar

@@ -56,6 +56,7 @@ class UsuarioRespuesta(BaseModel):
     telefono: str | None
     rol: Rol
     activo: bool
+    alumno_id: int | None = None
 
 
 class UsuarioActualizar(BaseModel):
