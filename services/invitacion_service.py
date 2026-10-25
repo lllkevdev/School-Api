@@ -6,9 +6,10 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from core.security import hash_password
+from core.security import hash_password, verify_password
 from models.alumno import Alumno
 from models.curso import Curso
+from models.inscripcion import Inscripcion
 from models.invitacion import Invitacion
 from models.usuario import Usuario
 from schemas.invitacion import InvitacionCrear, InvitacionAceptar
@@ -34,6 +35,9 @@ def crear_invitacion(
     )
     if alumno is None:
         return None, "alumno_inexistente", None
+
+    if not alumno.activo:
+        return None, "alumno_inactivo", None
 
     curso = db.scalar(
         select(Curso).where(
@@ -133,19 +137,40 @@ def aceptar_invitacion(
     if ahora > expira:
         return None, "invitacion_expirada"
 
+    if not invitacion.alumno.activo:
+        return None, "alumno_inactivo"
+
+    if not invitacion.curso.activo:
+        return None, "curso_inactivo"
+
     usuario_existente = db.scalar(
         select(Usuario).where(Usuario.email == invitacion.email)
     )
     if usuario_existente is not None:
-        if usuario_existente.alumno_id == invitacion.alumno_id and usuario_existente.activo:
-            invitacion.aceptada_en = ahora
-            db.commit()
-            return usuario_existente, None
-        return None, "conflicto"
+        if (
+            usuario_existente.alumno_id != invitacion.alumno_id
+            or not usuario_existente.activo
+        ):
+            return None, "invitacion_conflicto"
+
+        if not verify_password(
+            datos.password,
+            usuario_existente.password_hash,
+        ):
+            return None, "credenciales"
+
+        _asegurar_inscripcion(
+            db,
+            alumno_id=invitacion.alumno_id,
+            curso_id=invitacion.curso_id,
+        )
+        invitacion.aceptada_en = ahora
+        db.commit()
+        return usuario_existente, None
 
     usuario = Usuario(
-        nombre="",
-        apellido="",
+        nombre=invitacion.alumno.nombre,
+        apellido=invitacion.alumno.apellido,
         email=invitacion.email,
         password_hash=hash_password(datos.password),
         rol=Rol.ALUMNO,
@@ -155,6 +180,13 @@ def aceptar_invitacion(
     try:
         db.add(usuario)
         db.flush()
+
+        _asegurar_inscripcion(
+            db,
+            alumno_id=invitacion.alumno_id,
+            curso_id=invitacion.curso_id,
+        )
+
         invitacion.aceptada_en = ahora
         db.commit()
         db.refresh(usuario)
@@ -163,3 +195,24 @@ def aceptar_invitacion(
         raise
 
     return usuario, None
+
+
+def _asegurar_inscripcion(
+    db: Session,
+    alumno_id: int,
+    curso_id: int,
+) -> None:
+    inscripcion = db.scalar(
+        select(Inscripcion).where(
+            Inscripcion.alumno_id == alumno_id,
+            Inscripcion.curso_id == curso_id,
+        )
+    )
+
+    if inscripcion is None:
+        db.add(
+            Inscripcion(
+                alumno_id=alumno_id,
+                curso_id=curso_id,
+            )
+        )

@@ -64,6 +64,11 @@ ERRORES_HTTP = {
         "Credenciales inválidas"
     ),
 
+    "email_duplicado": (
+        409,
+        "Ya existe una cuenta con ese correo"
+    ),
+
     "no_autenticado":(
         401,
         "No autenticado"
@@ -126,6 +131,10 @@ ERRORES_HTTP = {
     "invitacion_revocada": (
         409,
         "La invitación fue revocada",
+    ),
+    "invitacion_conflicto": (
+        409,
+        "El correo ya está asociado a otra cuenta",
     ),
     "curso_inactivo": (
         409,

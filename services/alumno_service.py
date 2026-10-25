@@ -7,6 +7,7 @@ from models.curso import Curso
 from models.alumno import Alumno
 from models.usuario import Usuario
 from schemas.alumno import AlumnoCrear
+from schemas.roles import Rol
 
 
 def crear_alumno(
@@ -47,6 +48,12 @@ def obtener_alumnos(
     usuario: Usuario,
 ) -> list[Alumno]:
 
+    if usuario.rol == Rol.ADMIN:
+        alumnos = db.scalars(
+            select(Alumno).order_by(Alumno.id)
+        ).all()
+        return list(alumnos)
+
     alumnos = db.scalars(
         select(Alumno).join(Inscripcion).join(Curso).where(
             Curso.docente_id == usuario.id,
@@ -70,6 +77,9 @@ def buscar_alumno(
 
     if alumno is None:
         return None, "alumno_inexistente"
+
+    if usuario.rol == Rol.ADMIN:
+        return alumno, None
 
     alumno_accesible = db.scalar(
         select(Alumno).join(Inscripcion).join(Curso).where(

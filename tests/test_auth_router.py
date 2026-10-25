@@ -70,3 +70,65 @@ def test_perfil_actual_sin_token(client):
     respuesta = client.get("/auth/me")
 
     assert respuesta.status_code == 401
+
+
+def test_registro_admin_exitoso(client):
+    respuesta = client.post(
+        "/auth/registro",
+        json={
+            "nombre": "  Nueva  ",
+            "apellido": "  Admin  ",
+            "email": "  NUEVA.ADMIN@TEST.COM  ",
+            "password": "password123",
+            "rol": "alumno",
+        },
+    )
+
+    assert respuesta.status_code == 201
+
+    token = respuesta.json()["access_token"]
+
+    perfil = client.get(
+        "/auth/me",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert perfil.status_code == 200
+
+    datos = perfil.json()
+
+    assert datos["nombre"] == "Nueva"
+    assert datos["apellido"] == "Admin"
+    assert datos["email"] == "nueva.admin@test.com"
+    assert datos["rol"] == "admin"
+    assert datos["alumno_id"] is None
+
+
+def test_registro_email_duplicado(client):
+    datos = {
+        "nombre": "Admin",
+        "email": "duplicado@test.com",
+        "password": "password123",
+    }
+
+    primera = client.post("/auth/registro", json=datos)
+
+    assert primera.status_code == 201
+
+    segunda = client.post("/auth/registro", json=datos)
+
+    assert segunda.status_code == 409
+    assert segunda.json()["detail"] == "Ya existe una cuenta con ese correo"
+
+
+def test_registro_datos_invalidos(client):
+    respuesta = client.post(
+        "/auth/registro",
+        json={
+            "nombre": "A",
+            "email": "email-invalido",
+            "password": "corta",
+        },
+    )
+
+    assert respuesta.status_code == 422

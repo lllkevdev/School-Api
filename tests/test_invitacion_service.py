@@ -1,13 +1,15 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 from datetime import date, datetime, timedelta, timezone
 import hashlib
 
 from database.connection import Base
+from core.security import hash_password
 from models.curso import Curso
 from models.usuario import Usuario
 from models.alumno import Alumno
+from models.inscripcion import Inscripcion
 from models.invitacion import Invitacion
 from schemas.invitacion import InvitacionAceptar, InvitacionCrear
 from schemas.roles import Rol
@@ -610,9 +612,19 @@ def test_aceptar_invitacion_exitoso_crea_usuario():
         usuario, error = aceptar_invitacion(db, datos)
         assert error is None
         assert usuario is not None
+        assert usuario.nombre == alumno.nombre
+        assert usuario.apellido == alumno.apellido
         assert usuario.rol == Rol.ALUMNO
         assert usuario.alumno_id == alumno.id
         assert usuario.activo is True
+
+        inscripcion = db.scalar(
+            select(Inscripcion).where(
+                Inscripcion.alumno_id == alumno.id,
+                Inscripcion.curso_id == curso.id,
+            )
+        )
+        assert inscripcion is not None
     engine.dispose()
 
 
@@ -654,7 +666,7 @@ def test_aceptar_invitacion_usuario_existente_mismo_alumno():
             nombre="A",
             apellido="X",
             email="alumno@familia.com",
-            password_hash="hash",
+            password_hash=hash_password("password123"),
             rol=Rol.ALUMNO,
             alumno_id=alumno.id,
             activo=True,
@@ -680,6 +692,74 @@ def test_aceptar_invitacion_usuario_existente_mismo_alumno():
         assert error is None
         assert usuario is not None
         assert usuario.id == usuario_existente.id
+    engine.dispose()
+
+
+def test_aceptar_invitacion_usuario_existente_password_incorrecta():
+    engine = crear_db_test()
+    with Session(engine) as db:
+        docente = Usuario(
+            nombre="Doc",
+            email="d@test.com",
+            password_hash="hash",
+            rol=Rol.ADMIN,
+            activo=True,
+        )
+        db.add(docente)
+        db.commit()
+
+        alumno = Alumno(
+            nombre="A1",
+            apellido="X",
+            documento_identidad="111",
+            fecha_nacimiento=date(2005, 1, 1),
+            activo=True,
+        )
+        db.add(alumno)
+        db.commit()
+
+        curso = Curso(
+            docente_id=docente.id,
+            nombre_materia="Mat",
+            division="A",
+            anio_lectivo=2026,
+            cantidad_periodos=3,
+            activo=True,
+        )
+        db.add(curso)
+        db.commit()
+
+        db.add(
+            Usuario(
+                nombre="A",
+                apellido="X",
+                email="alumno@familia.com",
+                password_hash=hash_password("password123"),
+                rol=Rol.ALUMNO,
+                alumno_id=alumno.id,
+                activo=True,
+            )
+        )
+        db.commit()
+
+        token = "g" * 32
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+        db.add(
+            Invitacion(
+                alumno_id=alumno.id,
+                curso_id=curso.id,
+                docente_id=docente.id,
+                email="alumno@familia.com",
+                token_hash=token_hash,
+                expira_en=datetime.now(timezone.utc) + timedelta(hours=48),
+            )
+        )
+        db.commit()
+
+        datos = InvitacionAceptar(token=token, password="incorrecta")
+        usuario, error = aceptar_invitacion(db, datos)
+        assert usuario is None
+        assert error == "credenciales"
     engine.dispose()
 
 
@@ -752,5 +832,5 @@ def test_aceptar_invitacion_conflicto():
         datos = InvitacionAceptar(token=token, password="password123")
         usuario, error = aceptar_invitacion(db, datos)
         assert usuario is None
-        assert error == "conflicto"
+        assert error == "invitacion_conflicto"
     engine.dispose()

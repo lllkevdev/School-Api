@@ -85,3 +85,7 @@ class Invitacion(Base):
     docente: Mapped["Usuario"] = relationship(
         back_populates="invitaciones",
     )
+
+    @property
+    def revocada(self) -> bool:
+        return self.revocada_en is not None

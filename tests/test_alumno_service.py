@@ -96,7 +96,7 @@ def test_crear_alumno_documento_duplicado():
     engine.dispose()
 
 
-def test_obtener_alumnos_solo_del_docente():
+def test_obtener_alumnos_admin_ve_todos():
     engine = crear_db_test()
     from datetime import date
 
@@ -160,8 +160,50 @@ def test_obtener_alumnos_solo_del_docente():
         db.commit()
 
         alumnos_doc1 = obtener_alumnos(db, docente1)
-        assert len(alumnos_doc1) == 1
-        assert alumnos_doc1[0].id == alumno1.id
+        assert {alumno.id for alumno in alumnos_doc1} == {
+            alumno1.id,
+            alumno2.id,
+        }
+
+    engine.dispose()
+
+
+def test_admin_ve_y_desactiva_alumno_sin_inscripcion():
+    engine = crear_db_test()
+    from datetime import date
+
+    with Session(engine) as db:
+        admin = Usuario(
+            nombre="Admin",
+            email="admin@test.com",
+            password_hash="hash",
+            rol=Rol.ADMIN,
+            activo=True,
+        )
+        db.add(admin)
+        db.commit()
+
+        alumno = Alumno(
+            nombre="Sin",
+            apellido="Curso",
+            documento_identidad="333",
+            fecha_nacimiento=date(2005, 1, 1),
+            activo=True,
+        )
+        db.add(alumno)
+        db.commit()
+
+        alumnos = obtener_alumnos(db, admin)
+        assert [item.id for item in alumnos] == [alumno.id]
+
+        encontrado, error = buscar_alumno(db, alumno.id, admin)
+        assert error is None
+        assert encontrado is not None
+
+        desactivado, error = desactivar_alumno(db, alumno.id, admin)
+        assert error is None
+        assert desactivado is not None
+        assert desactivado.activo is False
 
     engine.dispose()
 
@@ -251,7 +293,7 @@ def test_buscar_alumno_sin_permiso():
             nombre="Doc2",
             email="d2@test.com",
             password_hash="hash",
-            rol=Rol.ADMIN,
+            rol=Rol.ALUMNO,
             activo=True,
         )
         db.add_all([docente1, docente2])

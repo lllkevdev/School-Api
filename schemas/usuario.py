@@ -16,13 +16,12 @@ def normalizar_texto(valor: str | None) -> str | None:
     return valor.strip()
 
 
-class UsuarioCrear(BaseModel):
+class UsuarioBase(BaseModel):
     nombre: str = Field(min_length=2, max_length=100)
     apellido: str | None = Field(default=None, min_length=2, max_length=100)
     email: EmailStr
     telefono: str | None = Field(default=None, max_length=30)
     password: str = Field(min_length=8, max_length=100)
-    rol: Rol | None = None
 
     @field_validator("nombre", "apellido", mode="before")
     @classmethod
@@ -42,7 +41,11 @@ class UsuarioCrear(BaseModel):
         return normalizar_texto(valor)
 
 
-class UsuarioRegistro(UsuarioCrear):
+class UsuarioCrear(UsuarioBase):
+    rol: Rol | None = None
+
+
+class UsuarioRegistro(UsuarioBase):
     pass
 
 

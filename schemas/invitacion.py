@@ -21,6 +21,10 @@ class InvitacionRespuesta(BaseModel):
     revocada: bool
 
 
+class InvitacionCreadaRespuesta(InvitacionRespuesta):
+    token: str
+
+
 class InvitacionAceptar(BaseModel):
     token: str = Field(min_length=32, max_length=512)
     password: str = Field(min_length=8, max_length=100)

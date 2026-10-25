@@ -4,9 +4,16 @@ from sqlalchemy.orm import Session
 from database.dependencies import get_db
 from core.permisos import requiere_permiso
 from core.errores import error_to_http
+from schemas.auth import TokenResponse
 from schemas.permisos import Permiso
-from schemas.invitacion import InvitacionCrear, InvitacionRespuesta, InvitacionAceptar
+from schemas.invitacion import (
+    InvitacionAceptar,
+    InvitacionCreadaRespuesta,
+    InvitacionCrear,
+    InvitacionRespuesta,
+)
 from models.usuario import Usuario
+from services.auth_service import crear_token_usuario
 from services.invitacion_service import (
     crear_invitacion,
     listar_invitaciones,
@@ -23,7 +30,7 @@ router = APIRouter(
 
 @router.post(
     "/",
-    response_model=InvitacionRespuesta,
+    response_model=InvitacionCreadaRespuesta,
     status_code=status.HTTP_201_CREATED,
 )
 def crear(
@@ -33,9 +40,14 @@ def crear(
         requiere_permiso(Permiso.CREAR_INVITACION)
     ),
 ):
-    invitacion, error, _ = crear_invitacion(db, datos, usuario)
+    invitacion, error, token = crear_invitacion(db, datos, usuario)
     error_to_http(error)
-    return invitacion
+
+    respuesta = InvitacionRespuesta.model_validate(invitacion)
+    return InvitacionCreadaRespuesta(
+        **respuesta.model_dump(),
+        token=token,
+    )
 
 
 @router.get(
@@ -69,6 +81,7 @@ def revocar(
 
 @router.post(
     "/aceptar",
+    response_model=TokenResponse,
     status_code=status.HTTP_200_OK,
 )
 def aceptar(
@@ -77,4 +90,8 @@ def aceptar(
 ):
     usuario, error = aceptar_invitacion(db, datos)
     error_to_http(error)
-    return {"mensaje": "Invitación aceptada correctamente"}
+
+    try:
+        return crear_token_usuario(usuario)
+    except ValueError as error:
+        error_to_http(str(error))
