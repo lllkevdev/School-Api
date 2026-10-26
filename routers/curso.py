@@ -14,6 +14,8 @@ from services.curso_service import (
     listar_cursos,
     obtener_curso,
     actualizar_curso,
+    archivar_curso,
+    reactivar_curso,
     eliminar_curso,
     listar_cursos_por_alumno,
 )
@@ -113,6 +115,38 @@ def actualizar_put(
     ),
 ):
     curso, error = actualizar_curso(db, curso_id, datos, usuario)
+    error_to_http(error)
+    return curso
+
+
+@router.patch(
+    "/{curso_id}/archivar",
+    response_model=CursoRespuesta,
+)
+def archivar(
+    curso_id: int,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(
+        requiere_permiso(Permiso.MODIFICAR_CURSO)
+    ),
+):
+    curso, error = archivar_curso(db, curso_id, usuario)
+    error_to_http(error)
+    return curso
+
+
+@router.patch(
+    "/{curso_id}/reactivar",
+    response_model=CursoRespuesta,
+)
+def reactivar(
+    curso_id: int,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(
+        requiere_permiso(Permiso.MODIFICAR_CURSO)
+    ),
+):
+    curso, error = reactivar_curso(db, curso_id, usuario)
     error_to_http(error)
     return curso
 

@@ -155,6 +155,10 @@ ERRORES_HTTP = {
         409,
         "El curso está inactivo",
     ),
+    "curso_activo": (
+        409,
+        "El curso ya está activo",
+    ),
     "tiene_inscripciones": (
         409,
         "No se puede eliminar el curso porque tiene inscripciones asociadas",
@@ -162,6 +166,10 @@ ERRORES_HTTP = {
     "tiene_evaluaciones": (
         409,
         "No se puede eliminar el curso porque tiene evaluaciones asociadas",
+    ),
+    "tiene_invitaciones": (
+        409,
+        "No se puede eliminar el curso porque tiene invitaciones asociadas",
     ),
     "foto_no_encontrada": (
         404,
