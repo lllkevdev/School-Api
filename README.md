@@ -189,7 +189,7 @@ Reglas principales:
 
 ## Variables de entorno
 
-Crear un archivo `.env` en la raíz del proyecto:
+Tomar `.env.example` como base y crear un archivo `.env` en la raíz del proyecto:
 
 ```env
 DATABASE_URL=postgresql+psycopg://usuario:contraseña@localhost:5432/school_db
