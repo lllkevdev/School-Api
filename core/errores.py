@@ -122,6 +122,11 @@ ERRORES_HTTP = {
         409,
         "El alumno ya está desactivado"
     ),
+    "alumno_compartido": (
+        409,
+        "El alumno también está inscripto en cursos de otro docente. "
+        "Quitá su inscripción de tu curso en lugar de desactivarlo."
+    ),
     "invitacion_inexistente": (
         404,
         "Invitación no encontrada",

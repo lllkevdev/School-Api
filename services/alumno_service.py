@@ -9,42 +9,7 @@ from models.usuario import Usuario
 from schemas.alumno import (
     AlumnoConInscripcionCrear,
     AlumnoConInscripcionRespuesta,
-    AlumnoCrear,
 )
-from schemas.roles import Rol
-
-
-def crear_alumno(
-    db: Session,
-    datos: AlumnoCrear,
-    usuario: Usuario,
-) -> tuple[Alumno | None, str | None]:
-
-    alumno_existente = db.scalar(
-        select(Alumno).where(
-            Alumno.documento_identidad == datos.documento_identidad,
-        )
-    )
-
-    if alumno_existente is not None:
-        return None, "documento_duplicado"
-
-    nuevo_alumno = Alumno(
-        nombre=datos.nombre,
-        apellido=datos.apellido,
-        documento_identidad=datos.documento_identidad,
-        fecha_nacimiento=datos.fecha_nacimiento,
-    )
-
-    try:
-        db.add(nuevo_alumno)
-        db.commit()
-        db.refresh(nuevo_alumno)
-    except IntegrityError:
-        db.rollback()
-        raise
-
-    return nuevo_alumno, None
 
 
 def _codigo_conflicto_alta(
@@ -189,16 +154,13 @@ def obtener_alumnos(
     usuario: Usuario,
 ) -> list[Alumno]:
 
-    if usuario.rol == Rol.ADMIN:
-        alumnos = db.scalars(
-            select(Alumno).order_by(Alumno.id)
-        ).all()
-        return list(alumnos)
-
     alumnos = db.scalars(
-        select(Alumno).join(Inscripcion).join(Curso).where(
-            Curso.docente_id == usuario.id,
-        ).distinct()
+        select(Alumno)
+        .join(Inscripcion, Inscripcion.alumno_id == Alumno.id)
+        .join(Curso, Curso.id == Inscripcion.curso_id)
+        .where(Curso.docente_id == usuario.id)
+        .distinct()
+        .order_by(Alumno.id)
     ).all()
 
     return list(alumnos)
@@ -219,21 +181,21 @@ def buscar_alumno(
     if alumno is None:
         return None, "alumno_inexistente"
 
-    if usuario.rol == Rol.ADMIN:
-        return alumno, None
-
     alumno_accesible = db.scalar(
-        select(Alumno).join(Inscripcion).join(Curso).where(
+        select(Alumno.id)
+        .join(Inscripcion, Inscripcion.alumno_id == Alumno.id)
+        .join(Curso, Curso.id == Inscripcion.curso_id)
+        .where(
             Alumno.id == alumno_id,
             Curso.docente_id == usuario.id,
         )
+        .limit(1)
     )
 
     if alumno_accesible is None:
         return None, "permiso"
 
     return alumno, None
-
 
 
 def desactivar_alumno(
@@ -252,6 +214,19 @@ def desactivar_alumno(
 
     if not alumno.activo:
         return None, "alumno_inactivo"
+
+    curso_ajeno = db.scalar(
+        select(Inscripcion.id)
+        .join(Curso, Curso.id == Inscripcion.curso_id)
+        .where(
+            Inscripcion.alumno_id == alumno.id,
+            Curso.docente_id != usuario.id,
+        )
+        .limit(1)
+    )
+
+    if curso_ajeno is not None:
+        return None, "alumno_compartido"
 
     alumno.activo = False
 

@@ -1,5 +1,4 @@
 from sqlalchemy import create_engine
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
@@ -8,11 +7,9 @@ from models.alumno import Alumno
 from models.curso import Curso
 from models.inscripcion import Inscripcion
 from models.usuario import Usuario
-from schemas.alumno import AlumnoCrear
 from schemas.roles import Rol
 from services.alumno_service import (
     buscar_alumno,
-    crear_alumno,
     desactivar_alumno,
     obtener_alumnos,
 )
@@ -28,75 +25,7 @@ def crear_db_test():
     return engine
 
 
-def test_crear_alumno_exitoso():
-    engine = crear_db_test()
-    from datetime import date
-
-    with Session(engine) as db:
-        usuario = Usuario(
-            nombre="Docente",
-            email="docente@test.com",
-            password_hash="hash",
-            rol=Rol.ADMIN,
-            activo=True,
-        )
-        db.add(usuario)
-        db.commit()
-
-        datos = AlumnoCrear(
-            nombre="Juan",
-            apellido="Perez",
-            documento_identidad="ABC12345",
-            fecha_nacimiento=date(2005, 1, 1),
-        )
-        alumno, error = crear_alumno(db, datos, usuario)
-
-        assert error is None
-        assert alumno is not None
-        assert alumno.id is not None
-        assert alumno.nombre == "Juan"
-        assert alumno.activo is True
-
-    engine.dispose()
-
-
-def test_crear_alumno_documento_duplicado():
-    engine = crear_db_test()
-    from datetime import date
-
-    with Session(engine) as db:
-        usuario = Usuario(
-            nombre="Docente",
-            email="docente@test.com",
-            password_hash="hash",
-            rol=Rol.ADMIN,
-            activo=True,
-        )
-        db.add(usuario)
-        db.commit()
-
-        datos = AlumnoCrear(
-            nombre="Juan",
-            apellido="Perez",
-            documento_identidad="ABC12345",
-            fecha_nacimiento=date(2005, 1, 1),
-        )
-        crear_alumno(db, datos, usuario)
-
-        datos2 = AlumnoCrear(
-            nombre="Pedro",
-            apellido="Lopez",
-            documento_identidad="ABC12345",
-            fecha_nacimiento=date(2006, 1, 1),
-        )
-        alumno, error = crear_alumno(db, datos2, usuario)
-        assert alumno is None
-        assert error == "documento_duplicado"
-
-    engine.dispose()
-
-
-def test_obtener_alumnos_admin_ve_todos():
+def test_obtener_alumnos_solo_cursos_del_docente():
     engine = crear_db_test()
     from datetime import date
 
@@ -160,27 +89,94 @@ def test_obtener_alumnos_admin_ve_todos():
         db.commit()
 
         alumnos_doc1 = obtener_alumnos(db, docente1)
-        assert {alumno.id for alumno in alumnos_doc1} == {
-            alumno1.id,
-            alumno2.id,
-        }
+        alumnos_doc2 = obtener_alumnos(db, docente2)
+
+        assert {alumno.id for alumno in alumnos_doc1} == {alumno1.id}
+        assert {alumno.id for alumno in alumnos_doc2} == {alumno2.id}
 
     engine.dispose()
 
 
-def test_admin_ve_y_desactiva_alumno_sin_inscripcion():
+def test_obtener_alumnos_incluye_compartidos():
     engine = crear_db_test()
     from datetime import date
 
     with Session(engine) as db:
-        admin = Usuario(
-            nombre="Admin",
-            email="admin@test.com",
+        docente1 = Usuario(
+            nombre="Doc1",
+            email="d1@test.com",
             password_hash="hash",
             rol=Rol.ADMIN,
             activo=True,
         )
-        db.add(admin)
+        docente2 = Usuario(
+            nombre="Doc2",
+            email="d2@test.com",
+            password_hash="hash",
+            rol=Rol.ADMIN,
+            activo=True,
+        )
+        db.add_all([docente1, docente2])
+        db.commit()
+
+        curso1 = Curso(
+            docente_id=docente1.id,
+            nombre_materia="Matematica",
+            division="A",
+            anio_lectivo=2026,
+            cantidad_periodos=3,
+            activo=True,
+        )
+        curso2 = Curso(
+            docente_id=docente2.id,
+            nombre_materia="Historia",
+            division="B",
+            anio_lectivo=2026,
+            cantidad_periodos=3,
+            activo=True,
+        )
+        db.add_all([curso1, curso2])
+        db.commit()
+
+        alumno = Alumno(
+            nombre="Compartido",
+            apellido="Alumno",
+            documento_identidad="333",
+            fecha_nacimiento=date(2005, 1, 1),
+            activo=True,
+        )
+        db.add(alumno)
+        db.commit()
+
+        db.add_all([
+            Inscripcion(alumno_id=alumno.id, curso_id=curso1.id),
+            Inscripcion(alumno_id=alumno.id, curso_id=curso2.id),
+        ])
+        db.commit()
+
+        assert [item.id for item in obtener_alumnos(db, docente1)] == [
+            alumno.id
+        ]
+        assert [item.id for item in obtener_alumnos(db, docente2)] == [
+            alumno.id
+        ]
+
+    engine.dispose()
+
+
+def test_docente_no_ve_alumno_sin_inscripcion():
+    engine = crear_db_test()
+    from datetime import date
+
+    with Session(engine) as db:
+        docente = Usuario(
+            nombre="Docente",
+            email="docente@test.com",
+            password_hash="hash",
+            rol=Rol.ADMIN,
+            activo=True,
+        )
+        db.add(docente)
         db.commit()
 
         alumno = Alumno(
@@ -193,17 +189,16 @@ def test_admin_ve_y_desactiva_alumno_sin_inscripcion():
         db.add(alumno)
         db.commit()
 
-        alumnos = obtener_alumnos(db, admin)
-        assert [item.id for item in alumnos] == [alumno.id]
+        alumnos = obtener_alumnos(db, docente)
+        assert alumnos == []
 
-        encontrado, error = buscar_alumno(db, alumno.id, admin)
-        assert error is None
-        assert encontrado is not None
+        encontrado, error = buscar_alumno(db, alumno.id, docente)
+        assert encontrado is None
+        assert error == "permiso"
 
-        desactivado, error = desactivar_alumno(db, alumno.id, admin)
-        assert error is None
-        assert desactivado is not None
-        assert desactivado.activo is False
+        desactivado, error = desactivar_alumno(db, alumno.id, docente)
+        assert desactivado is None
+        assert error == "permiso"
 
     engine.dispose()
 
@@ -375,6 +370,74 @@ def test_desactivar_alumno_exitoso():
         assert error is None
         assert desactivado is not None
         assert desactivado.activo is False
+
+    engine.dispose()
+
+
+def test_desactivar_alumno_compartido_bloquea_baja_global():
+    engine = crear_db_test()
+    from datetime import date
+
+    with Session(engine) as db:
+        docente1 = Usuario(
+            nombre="Doc1",
+            email="d1@test.com",
+            password_hash="hash",
+            rol=Rol.ADMIN,
+            activo=True,
+        )
+        docente2 = Usuario(
+            nombre="Doc2",
+            email="d2@test.com",
+            password_hash="hash",
+            rol=Rol.ADMIN,
+            activo=True,
+        )
+        db.add_all([docente1, docente2])
+        db.commit()
+
+        curso1 = Curso(
+            docente_id=docente1.id,
+            nombre_materia="Matematica",
+            division="A",
+            anio_lectivo=2026,
+            cantidad_periodos=3,
+            activo=True,
+        )
+        curso2 = Curso(
+            docente_id=docente2.id,
+            nombre_materia="Historia",
+            division="B",
+            anio_lectivo=2026,
+            cantidad_periodos=3,
+            activo=True,
+        )
+        db.add_all([curso1, curso2])
+        db.commit()
+
+        alumno = Alumno(
+            nombre="Compartido",
+            apellido="Alumno",
+            documento_identidad="333",
+            fecha_nacimiento=date(2005, 1, 1),
+            activo=True,
+        )
+        db.add(alumno)
+        db.commit()
+
+        db.add_all([
+            Inscripcion(alumno_id=alumno.id, curso_id=curso1.id),
+            Inscripcion(alumno_id=alumno.id, curso_id=curso2.id),
+        ])
+        db.commit()
+
+        desactivado, error = desactivar_alumno(db, alumno.id, docente1)
+
+        assert desactivado is None
+        assert error == "alumno_compartido"
+
+        db.refresh(alumno)
+        assert alumno.activo is True
 
     engine.dispose()
 

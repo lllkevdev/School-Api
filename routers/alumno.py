@@ -9,13 +9,11 @@ from schemas.permisos import Permiso
 from schemas.alumno import (
     AlumnoConInscripcionCrear,
     AlumnoConInscripcionRespuesta,
-    AlumnoCrear,
     AlumnoRespuesta,
 )
 from models.usuario import Usuario
 from models.alumno import Alumno
 from services.alumno_service import (
-    crear_alumno,
     crear_alumno_con_inscripcion,
     obtener_alumnos,
     buscar_alumno,
@@ -36,24 +34,6 @@ router = APIRouter(
 def obtener_mi_perfil(
     alumno: Alumno = Depends(get_alumno_actual),
 ):
-    return alumno
-
-
-@router.post(
-    "/",
-    response_model=AlumnoRespuesta,
-    status_code=status.HTTP_201_CREATED,
-)
-def crear(
-    datos: AlumnoCrear,
-    db: Session = Depends(get_db),
-    usuario: Usuario = Depends(
-        requiere_permiso(Permiso.CREAR_ALUMNO)
-    ),
-):
-    alumno, error = crear_alumno(db, datos, usuario)
-    error_to_http(error)
-
     return alumno
 
 
