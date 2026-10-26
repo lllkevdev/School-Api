@@ -9,6 +9,7 @@ from core.errores import error_to_http
 from core.dependencies import get_alumno_actual
 from schemas.permisos import Permiso
 from schemas.calificacion import (
+    CalificacionAlumnoRespuesta,
     CalificacionCrear,
     CalificacionActualizar,
     CalificacionRespuesta,
@@ -36,7 +37,7 @@ router = APIRouter(
 
 @router.get(
     "/mis-calificaciones",
-    response_model=list[CalificacionRespuesta],
+    response_model=list[CalificacionAlumnoRespuesta],
 )
 def mis_calificaciones(
     db: Session = Depends(get_db),

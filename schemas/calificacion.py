@@ -1,5 +1,8 @@
 from pydantic import BaseModel, ConfigDict, Field
 
+from schemas.curso import CursoResumenRespuesta
+from schemas.evaluacion import EvaluacionRespuesta
+
 
 class CalificacionCrear(BaseModel):
     alumno_id: int = Field(gt=0)
@@ -19,3 +22,8 @@ class CalificacionRespuesta(BaseModel):
     evaluacion_id: int
     curso_id: int
     nota: float
+
+
+class CalificacionAlumnoRespuesta(CalificacionRespuesta):
+    curso: CursoResumenRespuesta
+    evaluacion: EvaluacionRespuesta

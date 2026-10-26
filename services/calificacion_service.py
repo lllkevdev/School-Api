@@ -1,6 +1,6 @@
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from models.calificacion import Calificacion
 from models.curso import Curso
@@ -19,7 +19,13 @@ def listar_calificaciones_alumno(
     alumno_id: int,
 ) -> list[Calificacion]:
     calificaciones = db.scalars(
-        select(Calificacion).where(Calificacion.alumno_id == alumno_id)
+        select(Calificacion)
+        .options(
+            joinedload(Calificacion.curso),
+            joinedload(Calificacion.evaluacion),
+        )
+        .where(Calificacion.alumno_id == alumno_id)
+        .order_by(Calificacion.curso_id, Calificacion.evaluacion_id)
     ).all()
     return list(calificaciones)
 

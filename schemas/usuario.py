@@ -57,6 +57,7 @@ class UsuarioRespuesta(BaseModel):
     apellido: str
     email: EmailStr
     telefono: str | None
+    foto_perfil: str | None = None
     rol: Rol
     activo: bool
     alumno_id: int | None = None

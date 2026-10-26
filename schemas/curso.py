@@ -58,3 +58,13 @@ class CursoRespuesta(BaseModel):
     anio_lectivo: int
     cantidad_periodos: int
     activo: bool
+
+
+class CursoResumenRespuesta(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    nombre_materia: str
+    division: str
+    anio_lectivo: int
+    activo: bool

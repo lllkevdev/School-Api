@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
 from database.dependencies import get_db
@@ -6,11 +6,17 @@ from core.permisos import requiere_permiso
 from core.errores import error_to_http
 from core.dependencies import get_alumno_actual, get_usuario_actual
 from schemas.permisos import Permiso
-from schemas.alumno import AlumnoCrear, AlumnoRespuesta
+from schemas.alumno import (
+    AlumnoConInscripcionCrear,
+    AlumnoConInscripcionRespuesta,
+    AlumnoCrear,
+    AlumnoRespuesta,
+)
 from models.usuario import Usuario
 from models.alumno import Alumno
 from services.alumno_service import (
     crear_alumno,
+    crear_alumno_con_inscripcion,
     obtener_alumnos,
     buscar_alumno,
     desactivar_alumno,
@@ -49,6 +55,28 @@ def crear(
     error_to_http(error)
 
     return alumno
+
+
+@router.post(
+    "/con-inscripcion",
+    response_model=AlumnoConInscripcionRespuesta,
+    status_code=status.HTTP_201_CREATED,
+)
+def crear_con_inscripcion(
+    datos: AlumnoConInscripcionCrear,
+    response: Response,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(
+        requiere_permiso(Permiso.CREAR_ALUMNO)
+    ),
+):
+    resultado, error = crear_alumno_con_inscripcion(db, datos, usuario)
+    error_to_http(error)
+
+    if resultado.requiere_confirmacion:
+        response.status_code = status.HTTP_200_OK
+
+    return resultado
 
 
 @router.get(

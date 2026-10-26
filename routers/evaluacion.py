@@ -2,17 +2,21 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from database.dependencies import get_db
+from core.dependencies import get_alumno_actual
 from core.permisos import requiere_permiso
 from core.errores import error_to_http
 from schemas.permisos import Permiso
 from schemas.evaluacion import (
     EvaluacionCrear,
     EvaluacionActualizar,
+    EvaluacionAlumnoRespuesta,
     EvaluacionRespuesta,
 )
 from models.usuario import Usuario
+from models.alumno import Alumno
 from services.evaluacion_service import (
     crear_evaluacion,
+    listar_evaluaciones_alumno,
     listar_evaluaciones_por_curso,
     obtener_evaluacion,
     actualizar_evaluacion,
@@ -58,6 +62,17 @@ def listar_por_curso(
     evaluaciones, error = listar_evaluaciones_por_curso(db, curso_id, usuario)
     error_to_http(error)
     return evaluaciones
+
+
+@router.get(
+    "/mis-evaluaciones",
+    response_model=list[EvaluacionAlumnoRespuesta],
+)
+def mis_evaluaciones(
+    db: Session = Depends(get_db),
+    alumno: Alumno = Depends(get_alumno_actual),
+):
+    return listar_evaluaciones_alumno(db, alumno.id)
 
 
 @router.get(

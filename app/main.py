@@ -9,6 +9,7 @@ from routers.evaluacion import router as evaluacion_router
 from routers.inscripcion import router as inscripcion_router
 from routers.calificacion import router as calificacion_router
 from routers.invitacion import router as invitacion_router
+from routers.perfil import router as perfil_router
 
 app = FastAPI(
     title="School API",
@@ -41,6 +42,7 @@ app.include_router(evaluacion_router)
 app.include_router(inscripcion_router)
 app.include_router(calificacion_router)
 app.include_router(invitacion_router)
+app.include_router(perfil_router)
 
 
 @app.get("/")

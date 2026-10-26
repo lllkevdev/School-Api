@@ -13,6 +13,7 @@ from database.connection import Base
 
 if TYPE_CHECKING:
     from models.alumno import Alumno
+    from models.curso import Curso
     from models.evaluacion import Evaluacion
 
 
@@ -68,4 +69,8 @@ class Calificacion(Base):
     evaluacion: Mapped["Evaluacion"] = relationship(
         back_populates="calificaciones",
         foreign_keys=[evaluacion_id],
+    )
+
+    curso: Mapped["Curso"] = relationship(
+        foreign_keys=[curso_id],
     )

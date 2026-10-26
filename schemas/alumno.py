@@ -7,6 +7,8 @@ from pydantic import (
     field_validator,
 )
 
+from schemas.inscripcion import InscripcionRespuesta
+
 
 def normalizar_texto(valor: str | None) -> str | None:
     if valor is None:
@@ -56,6 +58,17 @@ class AlumnoRespuesta(BaseModel):
     documento_identidad: str
     fecha_nacimiento: date
     activo: bool
+
+
+class AlumnoConInscripcionCrear(AlumnoCrear):
+    curso_id: int = Field(gt=0)
+    confirmar_existente: bool = False
+
+
+class AlumnoConInscripcionRespuesta(BaseModel):
+    alumno: AlumnoRespuesta
+    inscripcion: InscripcionRespuesta | None
+    requiere_confirmacion: bool
 
 
 class AlumnoActualizar(BaseModel):

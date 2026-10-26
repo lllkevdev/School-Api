@@ -49,6 +49,16 @@ ERRORES_HTTP = {
         "La inscripcion no existe"
     ),
 
+    "inscripcion_duplicada": (
+        409,
+        "El alumno ya está inscripto en el curso"
+    ),
+
+    "curso_inexistente": (
+        404,
+        "Curso no encontrado"
+    ),
+
     "maestro": (
         403,
         "No tiene permiso para modificar esta calificacion"
@@ -147,6 +157,22 @@ ERRORES_HTTP = {
     "tiene_evaluaciones": (
         409,
         "No se puede eliminar el curso porque tiene evaluaciones asociadas",
+    ),
+    "foto_no_encontrada": (
+        404,
+        "Foto de perfil no encontrada",
+    ),
+    "foto_muy_grande": (
+        413,
+        "La foto supera el tamaño máximo permitido",
+    ),
+    "foto_formato_invalido": (
+        415,
+        "El formato de la imagen no está permitido",
+    ),
+    "foto_invalida": (
+        400,
+        "El archivo no es una imagen válida",
     ),
 }
 

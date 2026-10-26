@@ -1,12 +1,13 @@
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from core.propiedad import obtener_curso_propietario, obtener_evaluacion_propietario
 from models.usuario import Usuario
 from models.evaluacion import Evaluacion
 from models.curso import Curso
 from models.calificacion import Calificacion
+from models.inscripcion import Inscripcion
 from schemas.evaluacion import EvaluacionActualizar, EvaluacionCrear
 
 
@@ -62,6 +63,23 @@ def listar_evaluaciones_por_curso(
         select(Evaluacion).where(Evaluacion.curso_id == curso.id)
     ).all()
     return list(evaluaciones), None
+
+
+def listar_evaluaciones_alumno(
+    db: Session,
+    alumno_id: int,
+) -> list[Evaluacion]:
+    evaluaciones = db.scalars(
+        select(Evaluacion)
+        .join(
+            Inscripcion,
+            Inscripcion.curso_id == Evaluacion.curso_id,
+        )
+        .options(joinedload(Evaluacion.curso))
+        .where(Inscripcion.alumno_id == alumno_id)
+        .order_by(Evaluacion.fecha, Evaluacion.id)
+    ).all()
+    return list(evaluaciones)
 
 
 def obtener_evaluacion(

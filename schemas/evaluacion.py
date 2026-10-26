@@ -2,6 +2,8 @@ from datetime import date
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from schemas.curso import CursoResumenRespuesta
+
 
 class EvaluacionCrear(BaseModel):
     curso_id: int = Field(gt=0)
@@ -42,3 +44,7 @@ class EvaluacionRespuesta(BaseModel):
     titulo: str
     fecha: date
     periodo: int
+
+
+class EvaluacionAlumnoRespuesta(EvaluacionRespuesta):
+    curso: CursoResumenRespuesta

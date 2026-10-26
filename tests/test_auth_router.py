@@ -16,6 +16,7 @@ def test_perfil_actual_admin(client, auth_headers_admin):
     assert datos["rol"] == "admin"
     assert datos["email"] == "admin@test.com"
     assert datos["alumno_id"] is None
+    assert datos["foto_perfil"] is None
 
 
 def test_perfil_actual_alumno(client, db):
