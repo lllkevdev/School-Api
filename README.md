@@ -1,671 +1,391 @@
-# 🏫 School API
+# School API
 
-REST API desarrollada con **FastAPI** para gestionar alumnos, materias, inscripciones y calificaciones.
+API REST desarrollada con FastAPI para gestionar cursos, alumnos, inscripciones, evaluaciones, calificaciones, invitaciones y perfiles.
 
-El proyecto fue desarrollado como práctica de backend y portfolio, aplicando una arquitectura por capas, validación de datos, relaciones entre entidades, autorización basada en roles, manejo de errores, migraciones con Alembic, PostgreSQL y testing automatizado.
+El proyecto aplica una arquitectura por capas, autenticación con JWT, autorización por roles, validación con Pydantic, persistencia con SQLAlchemy, migraciones con Alembic y testing automatizado con Pytest.
 
----
+## Stack
 
-## 🚀 Tecnologías
+- Python 3.12
+- FastAPI
+- SQLAlchemy
+- Pydantic
+- PostgreSQL
+- psycopg
+- Alembic
+- PyJWT
+- Argon2
+- Pillow
+- openpyxl
+- Pytest
+- Uvicorn
 
-- **Python 3.12**
-- **FastAPI**
-- **SQLAlchemy**
-- **Pydantic**
-- **PostgreSQL**
-- **psycopg**
-- **Alembic**
-- **Pytest**
-- **Uvicorn**
-- **HTTPX**
+## Funcionalidades
 
----
+### Autenticación y usuarios
 
-## 📋 Funcionalidades
+- Registro público de docentes.
+- Inicio de sesión con JWT.
+- Consulta del usuario autenticado.
+- Roles `admin` y `alumno`.
+- Permisos por rol y por alcance del curso.
+- Vinculación de alumnos mediante invitaciones.
 
-### 👨‍🎓 Alumnos
+### Cursos
 
-- Crear alumnos
-- Obtener alumnos
-- Buscar alumnos por ID
-- Actualizar alumnos mediante `PUT`
-- Actualizar parcialmente alumnos mediante `PATCH`
-- Eliminar alumnos
-- Validación de datos
-- Protección de operaciones mediante permisos
+- Crear, listar, consultar y actualizar cursos.
+- Archivar y reactivar cursos.
+- Eliminar cursos de forma segura.
+- Aislamiento de cursos por docente.
+- El alumno puede consultar sus propios cursos.
 
-### 📚 Materias
+Un curso archivado queda fuera de las consultas del alumno y no permite nuevas inscripciones, evaluaciones ni calificaciones. El docente puede reactivarlo.
 
-- Crear materias
-- Obtener materias
-- Buscar materias por ID
-- Actualizar materias mediante `PUT`
-- Actualizar parcialmente materias mediante `PATCH`
-- Eliminar materias
-- Validación de nombres duplicados
-- Asignación de maestro a una materia
-- Protección de operaciones mediante permisos
+La eliminación se bloquea si el curso tiene inscripciones, evaluaciones o invitaciones asociadas.
 
-### 👤 Usuarios y roles
+### Alumnos
 
-La API incorpora un sistema de usuarios con diferentes roles:
+- Listar y consultar alumnos dentro del alcance del docente.
+- Registrar un alumno e inscribirlo en un curso en una sola operación.
+- Confirmar la reutilización de un perfil existente antes de inscribirlo.
+- Importar alumnos desde CSV o XLSX.
+- Desactivar alumnos.
+- Consultar el perfil académico del alumno autenticado.
 
-- `ADMIN`
-- `MAESTRO`
-- `ALUMNO`
+La importación admite archivos de hasta 5 MB y 500 filas. Informa errores por fila, reutiliza perfiles existentes sin modificarlos y omite alumnos ya inscriptos.
 
-Los usuarios pueden asociarse a un alumno y las operaciones disponibles dependen de los permisos correspondientes a cada rol.
+Un alumno compartido con cursos de otro docente no puede desactivarse globalmente; primero debe quitarse la inscripción del curso correspondiente.
 
-Las contraseñas no se almacenan en texto plano: se almacenan mediante hashing.
+### Inscripciones
 
-### 📝 Inscripciones
+- Inscribir alumnos en cursos.
+- Listar inscripciones por curso.
+- Consultar las inscripciones del alumno autenticado.
+- Quitar inscripciones.
+- Evitar inscripciones duplicadas.
 
-Los alumnos pueden estar inscriptos en materias.
+### Evaluaciones
 
-La API controla:
+- Crear, listar, consultar, actualizar y eliminar evaluaciones.
+- Listar evaluaciones por curso.
+- Consultar las evaluaciones del alumno autenticado.
+- Validar el período según la configuración del curso.
 
-- Creación de inscripciones
-- Eliminación de inscripciones
-- Existencia del alumno
-- Existencia de la materia
-- Inscripciones duplicadas
-- Permisos para gestionar inscripciones
+### Calificaciones
 
-Existe una restricción que impide que un alumno sea inscripto más de una vez en la misma materia.
+- Registrar, consultar, actualizar y eliminar calificaciones.
+- Validar que el alumno esté inscripto en el curso.
+- Evitar calificaciones duplicadas para el mismo alumno y evaluación.
+- Consultar promedio por curso y promedio general del alumno.
+- Consultar historial académico.
+- Exportar las calificaciones de un curso a CSV.
+- Aplicar el alcance correspondiente al docente o al alumno autenticado.
 
-Además, las inscripciones están relacionadas con las calificaciones: al eliminar una inscripción, sus calificaciones asociadas también son eliminadas mediante `cascade`.
+### Invitaciones
 
-### 📊 Calificaciones
+- Crear invitaciones para alumnos.
+- Listar y revocar invitaciones.
+- Aceptar una invitación y obtener un token de acceso.
+- Controlar vencimiento, uso y revocación.
 
-- Crear calificaciones
-- Consultar calificaciones
-- Buscar una calificación por ID
-- Actualizar calificaciones mediante `PATCH`
-- Eliminar calificaciones
-- Consultar calificaciones de un alumno
-- Consultar promedio
-- Consultar estadísticas
-- Validar períodos
-- Validar rango de notas
-- Evitar calificaciones duplicadas para el mismo alumno, materia y período
-- Verificar la inscripción del alumno en la materia
+### Perfil
 
-Las operaciones sobre calificaciones respetan el alcance correspondiente a cada rol.
+- Consultar y actualizar el perfil propio.
+- Subir, obtener y eliminar foto de perfil.
+- Validar tamaño y formato de la imagen.
 
----
+## Roles y autorización
 
-## 🔐 Roles y autorización
+### Admin / docente
 
-La API utiliza autorización basada en roles y permisos.
+Puede gestionar sus cursos y todo el contenido académico asociado:
 
-### ADMIN
+- Alumnos e inscripciones.
+- Evaluaciones y calificaciones.
+- Invitaciones.
+- Exportaciones.
+- Su propio perfil.
 
-Tiene acceso a las operaciones administrativas del sistema, incluyendo la gestión de:
+Las operaciones sobre cursos y alumnos respetan la propiedad del docente.
 
-- Alumnos
-- Materias
-- Inscripciones
-- Calificaciones
-- Usuarios
+### Alumno
 
-### MAESTRO
+Puede consultar:
 
-Puede gestionar y consultar calificaciones dentro del alcance de las materias que tiene asignadas.
+- Sus cursos e inscripciones.
+- Sus evaluaciones.
+- Sus calificaciones, promedio e historial.
+- Su perfil académico.
 
-También puede consultar información académica correspondiente a ese alcance.
+También puede actualizar sus datos personales y su foto de perfil.
 
-### ALUMNO
-
-Puede consultar sus propias calificaciones, promedio y estadísticas.
-
-El acceso a las calificaciones de otros alumnos está restringido.
-
----
-
-## 🏗️ Arquitectura
-
-El proyecto utiliza una arquitectura por capas para separar responsabilidades:
+## Arquitectura
 
 ```text
 school-api/
-│
 ├── alembic/
 │   └── versions/
-│
 ├── app/
 │   └── main.py
-│
 ├── core/
+│   ├── config.py
 │   ├── dependencies.py
 │   ├── errores.py
-│   └── permisos.py
-│
+│   ├── permisos.py
+│   └── security.py
 ├── database/
 │   ├── connection.py
 │   └── dependencies.py
-│
 ├── models/
 │   ├── alumno.py
-│   ├── materia.py
 │   ├── calificacion.py
+│   ├── curso.py
+│   ├── evaluacion.py
 │   ├── inscripcion.py
+│   ├── invitacion.py
 │   └── usuario.py
-│
 ├── routers/
 │   ├── alumno.py
-│   ├── materia.py
+│   ├── auth.py
 │   ├── calificacion.py
+│   ├── curso.py
+│   ├── evaluacion.py
 │   ├── inscripcion.py
-│   └── usuario.py
-│
+│   ├── invitacion.py
+│   └── perfil.py
 ├── schemas/
-│   ├── alumno.py
-│   ├── materia.py
-│   ├── calificacion.py
-│   ├── inscripcion.py
-│   ├── usuario.py
-│   └── roles.py
-│
-├── security/
-│   └── password.py
-│
 ├── services/
-│   ├── alumno_service.py
-│   ├── materia_service.py
-│   ├── calificacion_service.py
-│   ├── inscripcion_service.py
-│   └── usuario_service.py
-│
 ├── tests/
-│   ├── conftest.py
-│   ├── test_alumno.py
-│   ├── test_materia.py
-│   ├── test_calificacion.py
-│   ├── test_inscripcion.py
-│   ├── test_usuario.py
-│   └── test_rollback.py
-│
-├── .gitignore
 ├── alembic.ini
+├── requirements.txt
 └── README.md
 ```
 
 ### Separación de responsabilidades
 
-**Routers**
+- **Routers:** reciben solicitudes, resuelven dependencias, verifican permisos y devuelven respuestas HTTP.
+- **Services:** contienen la lógica de negocio y las operaciones de persistencia.
+- **Schemas:** definen contratos de entrada y salida, normalización y validaciones con Pydantic.
+- **Models:** representan tablas y relaciones con SQLAlchemy.
+- **Core:** configuración, seguridad, dependencias, permisos y conversión centralizada de errores.
+- **Database:** configuración del engine y de las sesiones.
 
-Se encargan de recibir las solicitudes HTTP, gestionar dependencias, permisos y devolver las respuestas correspondientes.
-
-**Services**
-
-Contienen la lógica de negocio y las operaciones relacionadas con la persistencia de datos.
-
-**Schemas**
-
-Definen la estructura y validación de los datos mediante Pydantic.
-
-**Models**
-
-Representan las entidades, tablas y relaciones de la base de datos mediante SQLAlchemy.
-
-**Core**
-
-Contiene componentes centrales de la aplicación:
-
-- dependencies.py: dependencias utilizadas por los endpoints y obtención del usuario actual.
-
-- permisos.py: definición y control de permisos de acceso según el rol.
-
-- errores.py: manejo y conversión centralizada de errores de negocio a respuestas HTTP.
-
-**Security**
-
-Contiene componentes relacionados con seguridad, como el hashing y verificación de contraseñas.
-
-**Database**
-
-Contiene la configuración de SQLAlchemy y la gestión de sesiones de base de datos.
-
----
-
-## 🗄️ Modelo de datos
-
-Las principales entidades del sistema son:
+## Modelo de datos
 
 ```text
-                    ┌──────────────┐
-                    │    Usuario   │
-                    └──────┬───────┘
-                           │
-                           │ alumno_id
-                           ▼
-                    ┌──────────────┐
-                    │    Alumno    │
-                    └──────┬───────┘
-                           │
-                           │
-                    ┌──────▼───────┐
-                    │ Inscripción  │
-                    └──────┬───────┘
-                           │
-                           │
-                    ┌──────▼───────┐
-                    │    Materia   │
-                    └──────┬───────┘
-                           │
-                           │
-                    ┌──────▼───────┐
-                    │ Calificación │
-                    └──────────────┘
+Usuario ──> Alumno
+Curso ──> Inscripción <── Alumno
+Curso ──> Evaluación ──> Calificación <── Alumno
+Curso ──> Invitación
 ```
 
-Una **inscripción** relaciona un alumno con una materia.
+Reglas principales:
 
-Una **calificación** pertenece a un alumno y a una materia, y requiere que exista la correspondiente inscripción.
+- Un curso pertenece a un docente.
+- Un alumno no puede estar inscripto dos veces en el mismo curso.
+- Una calificación requiere una inscripción previa y es única por alumno y evaluación.
+- Las notas deben estar entre 1 y 10.
+- La cantidad de períodos de un curso debe estar entre 1 y 12.
 
-Una materia puede tener un maestro asignado.
+## Variables de entorno
 
-Un usuario con rol `ALUMNO` puede estar asociado a un único alumno.
-
----
-
-## 📌 Reglas de integridad
-
-La API utiliza validaciones de aplicación y restricciones de base de datos.
-
-### Alumno
-
-```text
-edad > 0
-edad < 100
-```
-
-### Calificación
-
-```text
-nota >= 1
-nota <= 10
-
-periodo >= 1
-periodo <= 3
-```
-
-### Inscripciones
-
-La combinación:
-
-```text
-alumno_id + materia_id
-```
-
-debe ser única.
-
-### Calificaciones
-
-La combinación:
-
-```text
-alumno_id + materia_id + periodo
-```
-
-debe ser única.
-
-Estas restricciones ayudan a garantizar la integridad de los datos incluso cuando las operaciones llegan directamente a la base de datos.
-
----
-
-## 🔄 Migraciones con Alembic
-
-El proyecto utiliza **Alembic** para gestionar la evolución del esquema de PostgreSQL.
-
-Para ejecutar todas las migraciones:
-
-```bash
-alembic upgrade head
-```
-
-Para consultar la versión actual:
-
-```bash
-alembic current
-```
-
-Para revisar el historial:
-
-```bash
-alembic history
-```
-
-Las migraciones permiten modificar el esquema de la base de datos de forma controlada sin tener que recrear manualmente las tablas.
-
----
-
-## 🔐 Variables de entorno
-
-La conexión a PostgreSQL se configura mediante una variable de entorno:
+Crear un archivo `.env` en la raíz del proyecto:
 
 ```env
 DATABASE_URL=postgresql+psycopg://usuario:contraseña@localhost:5432/school_db
+SECRET_KEY=una_clave_larga_y_segura
+ACCES_TOKEN_EXPIRES_MINUTES=30
+MEDIA_ROOT=media
+MAX_FOTO_BYTES=2097152
+FOTO_MAX_DIMENSION=1024
+FOTO_MAX_PIXELES=25000000
 ```
 
-El archivo `.env` no está incluido en el repositorio.
+`DATABASE_URL` y `SECRET_KEY` son obligatorias. Las demás variables tienen valores por defecto.
 
-Cada entorno debe configurar sus propias credenciales de base de datos.
+## Instalación
 
----
+Crear y activar el entorno virtual en Windows:
 
-## ⚙️ Instalación
-
-### 1. Clonar el repositorio
-
-```bash
-git clone https://github.com/lllkevdev/School-Api.git
-```
-
-Entrar al proyecto:
-
-```bash
-cd School-Api
-```
-
-### 2. Crear el entorno virtual
-
-En Windows:
-
-```bash
+```powershell
 python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 ```
 
-Activarlo:
+Instalar dependencias:
 
-```bash
-.venv\Scripts\activate
+```powershell
+pip install -r requirements.txt
 ```
 
-### 3. Instalar dependencias
+Configurar PostgreSQL y el archivo `.env`.
 
-```bash
-pip install fastapi uvicorn sqlalchemy psycopg[binary] pydantic alembic python-dotenv pytest httpx
-```
+Aplicar las migraciones:
 
-### 4. Configurar PostgreSQL
-
-Crear una base de datos llamada:
-
-```text
-school_db
-```
-
-Después crear el archivo `.env`:
-
-```env
-DATABASE_URL=postgresql+psycopg://usuario:contraseña@localhost:5432/school_db
-```
-
-### 5. Ejecutar las migraciones
-
-```bash
+```powershell
 alembic upgrade head
 ```
 
----
+## Ejecutar la API
 
-## ▶️ Ejecutar la API
-
-Desde la raíz del proyecto:
-
-```bash
+```powershell
 uvicorn app.main:app --reload
 ```
 
-La API estará disponible en:
+La API queda disponible en:
 
 ```text
 http://127.0.0.1:8000
 ```
 
----
-
-## 📖 Documentación
-
-FastAPI genera automáticamente documentación interactiva.
-
-### Swagger UI
+Documentación interactiva:
 
 ```text
 http://127.0.0.1:8000/docs
-```
-
-### ReDoc
-
-```text
 http://127.0.0.1:8000/redoc
 ```
 
-Swagger permite consultar y probar los endpoints directamente desde el navegador.
+CORS está habilitado para el frontend en `http://localhost:5173`.
 
----
+## Testing
 
-## 🛣️ Principales endpoints
+La suite usa Pytest y, por defecto, una base SQLite local para poder ejecutarse sin un PostgreSQL preconfigurado.
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q
+```
+
+Para usar otra base de tests:
+
+```powershell
+$env:TEST_DATABASE_URL="postgresql+psycopg://usuario:contraseña@localhost:5432/school_test_db"
+.\.venv\Scripts\python.exe -m pytest -q
+```
+
+Los tests cubren autenticación, permisos, cursos, alumnos, importaciones, inscripciones, evaluaciones, calificaciones, invitaciones, perfiles y manejo de errores.
+
+## Endpoints principales
+
+### Autenticación
+
+```text
+GET  /auth/me
+POST /auth/login
+POST /auth/registro
+```
 
 ### Alumnos
 
 ```text
-GET    /alumnos/
-POST   /alumnos/
-GET    /alumnos/{alumno_id}
-PUT    /alumnos/{alumno_id}
-PATCH  /alumnos/{alumno_id}
-DELETE /alumnos/{alumno_id}
+GET   /alumnos/
+GET   /alumnos/me
+GET   /alumnos/{alumno_id}
+POST  /alumnos/con-inscripcion
+POST  /alumnos/importar
+PATCH /alumnos/{alumno_id}/desactivar
 ```
 
-### Materias
+`POST /alumnos/importar` recibe `multipart/form-data` con los campos `curso_id` y `archivo`.
+
+### Cursos
 
 ```text
-GET    /materias/
-POST   /materias/
-GET    /materias/{materia_id}
-PUT    /materias/{materia_id}
-PATCH  /materias/{materia_id}
-DELETE /materias/{materia_id}
+GET    /cursos/
+GET    /cursos/mis-cursos
+GET    /cursos/{curso_id}
+POST   /cursos/
+PATCH  /cursos/{curso_id}
+PUT    /cursos/{curso_id}
+PATCH  /cursos/{curso_id}/archivar
+PATCH  /cursos/{curso_id}/reactivar
+DELETE /cursos/{curso_id}
 ```
 
 ### Inscripciones
 
 ```text
+GET    /inscripciones/mis-inscripciones
+GET    /inscripciones/curso/{curso_id}
 POST   /inscripciones/
 DELETE /inscripciones/{inscripcion_id}
+```
+
+### Evaluaciones
+
+```text
+GET    /evaluaciones/curso/{curso_id}
+GET    /evaluaciones/mis-evaluaciones
+GET    /evaluaciones/{evaluacion_id}
+POST   /evaluaciones/
+PATCH  /evaluaciones/{evaluacion_id}
+PUT    /evaluaciones/{evaluacion_id}
+DELETE /evaluaciones/{evaluacion_id}
 ```
 
 ### Calificaciones
 
 ```text
-GET    /calificaciones/
+GET    /calificaciones/curso/{curso_id}
+GET    /calificaciones/curso/{curso_id}/promedio
+GET    /calificaciones/curso/{curso_id}/export
+GET    /calificaciones/mis-calificaciones
+GET    /calificaciones/mi-promedio
+GET    /calificaciones/mi-historial
 POST   /calificaciones/
-GET    /calificaciones/detalle
-GET    /calificaciones/{calificacion_id}
 PATCH  /calificaciones/{calificacion_id}
 DELETE /calificaciones/{calificacion_id}
 ```
 
-Consultas relacionadas con alumnos:
+### Invitaciones
 
 ```text
-GET /calificaciones/alumno/{alumno_id}
-GET /calificaciones/alumno/{alumno_id}/promedio
-GET /calificaciones/alumno/{alumno_id}/estadisticas
+GET  /invitaciones/
+POST /invitaciones/
+POST /invitaciones/{invitacion_id}/revocar
+POST /invitaciones/aceptar
 ```
 
-Endpoints destinados al propio alumno:
+### Perfil
 
 ```text
-GET /calificaciones/alumno/mis-calificaciones
-GET /calificaciones/alumno/mi-promedio
-GET /calificaciones/alumno/mi-estadisticas
+GET    /perfil/me
+PATCH  /perfil/me
+GET    /perfil/me/foto
+POST   /perfil/me/foto
+DELETE /perfil/me/foto
 ```
 
-Los endpoints disponibles y sus permisos pueden consultarse con mayor detalle en Swagger.
+## Manejo de errores
 
----
-
-## 🧪 Testing
-
-El proyecto cuenta con una suite de tests automatizados utilizando **Pytest**.
-
-Los tests cubren:
-
-- Alumnos
-- Materias
-- Usuarios
-- Inscripciones
-- Calificaciones
-- Roles y permisos
-- Validaciones
-- Errores HTTP
-- Relaciones entre entidades
-- Operaciones `PUT` y `PATCH`
-- Eliminaciones
-- Inscripciones duplicadas
-- Calificaciones duplicadas
-- Reglas de acceso por usuario
-- Integridad referencial
-- Cascades
-- Manejo de errores de integridad
-- Rollback de transacciones
-
-Para ejecutar toda la suite:
-
-```bash
-python -m pytest
-```
-
-### Estado actual
-
-```text
-Suite completa: todos los tests pasan correctamente
-```
-
----
-
-## 🛡️ Manejo de errores
-
-La API utiliza diferentes códigos HTTP según el tipo de operación o error:
+La API utiliza respuestas HTTP consistentes:
 
 ```text
 400 Bad Request
+401 Unauthorized
 403 Forbidden
 404 Not Found
 409 Conflict
+410 Gone
+413 Payload Too Large
+415 Unsupported Media Type
 422 Unprocessable Entity
 500 Internal Server Error
 ```
 
-Ejemplos:
+Los errores de negocio se centralizan en `core/errores.py`. Los conflictos de integridad de base de datos provocan `rollback` para mantener la sesión utilizable.
+
+## Frontend
+
+El frontend se encuentra en un repositorio separado:
 
 ```text
-Alumno inexistente              → 404
-Materia inexistente             → 404
-Calificación inexistente        → 404
-Inscripción inexistente         → 404
-Operación sin permiso           → 403
-Materia duplicada               → 409
-Inscripción duplicada           → 409
-Calificación duplicada          → 409
-Datos inválidos                 → 422
+https://github.com/lllkevdev/School-Frontend
 ```
 
-Los errores de integridad de base de datos también provocan un `rollback` de la sesión para mantenerla en un estado utilizable.
+Consumir esta API configurando `VITE_API_URL` en el archivo `.env` del frontend.
 
----
+## Autor
 
-## 🧠 Conceptos aplicados
+Kevin Baez
 
-Durante el desarrollo del proyecto se trabajaron conceptos fundamentales de backend:
-
-- Python
-- FastAPI
-- APIs REST
-- CRUD
-- HTTP methods
-- HTTP status codes
-- Dependency Injection
-- Arquitectura por capas
-- ORM
-- SQLAlchemy
-- PostgreSQL
-- Pydantic
-- Foreign Keys
-- Relaciones entre tablas
-- Constraints
-- Validación de datos
-- Roles y permisos
-- Autorización
-- Hashing de contraseñas
-- Manejo de excepciones
-- Transacciones
-- Rollback
-- Consultas con filtros
-- JOINs
-- Agregaciones
-- Migraciones
-- Alembic
-- Testing
-- Pytest
-- Git
-- GitHub
-
----
-
-## 📌 Estado del proyecto
-
-### Backend
-
-🟢 **Completado**
-
-La API cuenta actualmente con:
-
-- CRUD de alumnos
-- CRUD de materias
-- Gestión de usuarios
-- Roles y permisos
-- Gestión de inscripciones
-- Gestión de calificaciones
-- Validaciones
-- Reglas de integridad
-- Migraciones
-- Manejo de errores
-- Tests automatizados
-
-### Frontend
-
-🔜 **Próximamente**
-
-El siguiente objetivo del proyecto es desarrollar una interfaz web que consuma la API y permita gestionar la información desde el navegador.
-
----
-
-## 🎯 Objetivo del proyecto
-
-Este proyecto forma parte de mi aprendizaje y portfolio como desarrollador de software, con foco en **backend y desarrollo de APIs REST**.
-
-El objetivo fue construir una API desde cero y aplicar buenas prácticas de desarrollo relacionadas con:
-
-- organización del código
-- arquitectura
-- persistencia de datos
-- validación
-- autorización
-- manejo de errores
-- testing
-- migraciones
-- control de versiones
-
-El proyecto representa una etapa práctica de mi formación como desarrollador backend.
-
----
-
-## 👨‍💻 Autor
-
-**Kevin Baez**
-
-GitHub: **@lllkevdev**
+GitHub: [@lllkevdev](https://github.com/lllkevdev)
