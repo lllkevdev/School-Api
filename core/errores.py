@@ -187,6 +187,26 @@ ERRORES_HTTP = {
         400,
         "El archivo no es una imagen válida",
     ),
+    "archivo_muy_grande": (
+        413,
+        "El archivo supera el tamaño máximo permitido",
+    ),
+    "archivo_formato_invalido": (
+        415,
+        "El formato del archivo no está permitido",
+    ),
+    "archivo_invalido": (
+        400,
+        "El archivo no es válido o no tiene el formato esperado",
+    ),
+    "archivo_vacio": (
+        400,
+        "El archivo no contiene alumnos para importar",
+    ),
+    "demasiadas_filas": (
+        400,
+        "El archivo supera el máximo de 500 filas",
+    ),
 }
 
 

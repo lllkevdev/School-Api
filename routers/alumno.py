@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, File, Form, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
 from database.dependencies import get_db
@@ -10,6 +10,7 @@ from schemas.alumno import (
     AlumnoConInscripcionCrear,
     AlumnoConInscripcionRespuesta,
     AlumnoRespuesta,
+    ImportacionAlumnosRespuesta,
 )
 from models.usuario import Usuario
 from models.alumno import Alumno
@@ -19,6 +20,7 @@ from services.alumno_service import (
     buscar_alumno,
     desactivar_alumno,
 )
+from services.importacion_service import MAX_BYTES, importar_alumnos
 
 
 router = APIRouter(
@@ -55,6 +57,35 @@ def crear_con_inscripcion(
 
     if resultado.requiere_confirmacion:
         response.status_code = status.HTTP_200_OK
+
+    return resultado
+
+
+@router.post(
+    "/importar",
+    response_model=ImportacionAlumnosRespuesta,
+)
+async def importar(
+    curso_id: int = Form(..., gt=0),
+    archivo: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(
+        requiere_permiso(Permiso.CREAR_ALUMNO)
+    ),
+):
+    contenido = await archivo.read(MAX_BYTES + 1)
+
+    if len(contenido) > MAX_BYTES:
+        error_to_http("archivo_muy_grande")
+
+    resultado, error = importar_alumnos(
+        db,
+        curso_id,
+        usuario,
+        archivo.filename or "",
+        contenido,
+    )
+    error_to_http(error)
 
     return resultado
 

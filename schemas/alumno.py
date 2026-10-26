@@ -71,6 +71,22 @@ class AlumnoConInscripcionRespuesta(BaseModel):
     requiere_confirmacion: bool
 
 
+class ImportacionError(BaseModel):
+    fila: int
+    documento: str | None = None
+    mensaje: str
+
+
+class ImportacionAlumnosRespuesta(BaseModel):
+    total_filas: int
+    alumnos_creados: int
+    alumnos_inscriptos: int
+    alumnos_omitidos: int
+    errores: list[ImportacionError]
+    alumnos: list[AlumnoRespuesta]
+    inscripciones: list[InscripcionRespuesta]
+
+
 class AlumnoActualizar(BaseModel):
     nombre: str | None = Field(
         default=None,
